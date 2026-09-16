@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { Badge, Card } from "@/components/ui/layout";
+import { ArrowDown, ArrowUp, CalendarDays, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { Card } from "@/components/ui/layout";
 import { cn } from "@/lib/cn";
 import { formatIDR } from "@/domain/money";
 import { ALL_CATEGORIES, type CategoryMeta } from "@/domain/categories";
@@ -55,58 +55,61 @@ export function TotalMoneyCard({
   total,
   walletTotal,
   savingsTotal,
-  onboarding,
 }: {
   total: number;
   walletTotal: number;
   savingsTotal: number;
-  onboarding?: boolean;
 }) {
   return (
-    <Card as="section" className="border-transparent bg-[#173b3b] text-white">
-      <p className="text-[12px] font-semibold uppercase tracking-wide text-white/70">Total uang Anda</p>
-      <p className="financial-display mt-1">{formatIDR(total)}</p>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-white/80">
-        <span>
-          Dompet <strong className="tabular text-white">{formatIDR(walletTotal)}</strong>
-        </span>
-        <span>
-          Tabungan <strong className="tabular text-white">{formatIDR(savingsTotal)}</strong>
-        </span>
+    <Card as="section" className="overflow-hidden border-transparent bg-[#123938] p-0 text-white">
+      <div className="px-4 pb-3.5 pt-4">
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-white/65">Total uang Anda</p>
+        <p className="financial-display mt-1 text-[2rem] text-white">{formatIDR(total)}</p>
       </div>
-      {onboarding ? (
-        <p className="mt-3 rounded-lg bg-white/10 px-2.5 py-2 text-[12px] leading-relaxed text-white/85">
-          Mulai dari satu dompet. Saldo tidak pernah diketik dua kali — semuanya dihitung dari transaksi.
-        </p>
-      ) : null}
+      <div className="grid grid-cols-2 border-t border-white/10 bg-white/[0.06]">
+        <div className="px-4 py-2.5">
+          <p className="text-[11px] font-semibold text-white/60">Dompet</p>
+          <p className="mt-0.5 text-[13.5px] font-bold tabular text-white">{formatIDR(walletTotal)}</p>
+        </div>
+        <div className="border-l border-white/10 px-4 py-2.5">
+          <p className="text-[11px] font-semibold text-white/60">Tabungan</p>
+          <p className="mt-0.5 text-[13.5px] font-bold tabular text-white">{formatIDR(savingsTotal)}</p>
+        </div>
+      </div>
     </Card>
   );
 }
 
 export function CashFlowCard({ summary }: { summary: MonthlySummary }) {
+  const netTone = summary.netCashFlow >= 0 ? "text-income" : "text-expense";
+
   return (
     <Card as="section" className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted">Bulan ini</h2>
-        <Badge tone={summary.netCashFlow >= 0 ? "income" : "expense"}>
-          Net {formatIDR(summary.netCashFlow)}
-        </Badge>
+        <p className={cn("text-[14px] font-extrabold tabular", netTone)}>Net {formatIDR(summary.netCashFlow)}</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <figure className={cn("rounded-xl px-3 py-2.5", "bg-income-soft")}>
-          <figcaption className="text-[11.5px] font-semibold text-income">Pemasukan</figcaption>
+        <figure className="rounded-lg bg-income-soft px-3 py-2.5">
+          <figcaption className="flex items-center gap-1.5 text-[11.5px] font-semibold text-income">
+            <ArrowDown className="h-3.5 w-3.5" aria-hidden />
+            Pemasukan
+          </figcaption>
           <p className="mt-0.5 text-[17px] font-extrabold tabular text-income">{formatIDR(summary.income)}</p>
           <p className="text-[11px] text-muted">{summary.incomeCount} transaksi</p>
         </figure>
-        <figure className={cn("rounded-xl px-3 py-2.5", "bg-expense-soft")}>
-          <figcaption className="text-[11.5px] font-semibold text-expense">Pengeluaran</figcaption>
+        <figure className="rounded-lg bg-expense-soft px-3 py-2.5">
+          <figcaption className="flex items-center gap-1.5 text-[11.5px] font-semibold text-expense">
+            <ArrowUp className="h-3.5 w-3.5" aria-hidden />
+            Pengeluaran
+          </figcaption>
           <p className="mt-0.5 text-[17px] font-extrabold tabular text-expense">{formatIDR(summary.expense)}</p>
           <p className="text-[11px] text-muted">{summary.expenseCount} transaksi</p>
         </figure>
       </div>
-      <p className="text-[11.5px] leading-relaxed text-muted">
-        Transfer, setoran/penarikan tabungan, dan saldo awal tidak dihitung di sini — hanya pemasukan dan pengeluaran
-        nyata.
+      <p className="flex items-start gap-1.5 text-[11.5px] leading-relaxed text-muted">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+        Hanya pemasukan dan pengeluaran nyata; transfer, tabungan, dan saldo awal dikecualikan.
       </p>
     </Card>
   );
