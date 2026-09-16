@@ -207,7 +207,7 @@ export function ImportCard() {
               </p>
             ) : null}
             {pending.validation.warnings.map((warning) => (
-              <p key={warning} className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-[12px] text-warning">
+              <p key={warning} className="rounded-lg bg-warning-soft px-2.5 py-1.5 text-[12px] text-warning">
                 {warning}
               </p>
             ))}

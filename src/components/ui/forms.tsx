@@ -44,7 +44,7 @@ export function Field({ label, hint, error, htmlFor, optional, children, classNa
 }
 
 const CONTROL =
-  "w-full min-w-0 rounded-xl border border-line bg-white px-3 py-2.5 text-[15px] text-ink shadow-xs outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-60";
+  "w-full min-w-0 rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px] text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-60";
 
 export function TextInput({
   className,
@@ -240,8 +240,8 @@ export function Segmented<T extends string>({
               className={cn(
                 "flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-[13px] font-semibold transition",
                 active
-                  ? "border-brand bg-brand text-white shadow-sm"
-                  : "border-line bg-white text-ink hover:border-brand/40 hover:bg-brand-soft/60",
+                  ? "border-brand bg-brand text-primary-foreground"
+                  : "border-line bg-surface text-ink hover:border-brand/40 hover:bg-brand-soft/60",
               )}
             >
               {option.icon}
@@ -283,7 +283,7 @@ export function ChipToggle<T extends string>({
               onClick={() => onToggle(option.value)}
               className={cn(
                 "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                active ? "border-brand bg-brand text-white" : "border-line bg-white text-muted hover:text-ink",
+                active ? "border-brand bg-brand text-primary-foreground" : "border-line bg-surface text-muted hover:text-ink",
               )}
             >
               {option.label}

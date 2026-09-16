@@ -303,7 +303,7 @@ describe("EmptyState", () => {
 });
 
 describe("BottomNav", () => {
-  it("renders exactly five primary tabs plus the create shortcut", () => {
+  it("renders exactly five labeled primary destinations without a global create shortcut", () => {
     render(<BottomNav />);
     const nav = screen.getByRole("navigation", { name: "Navigasi utama" });
     expect(nav).toBeInTheDocument();
@@ -311,9 +311,14 @@ describe("BottomNav", () => {
     for (const label of NAV_ITEMS.map((item) => item.label)) {
       expect(within(nav).getAllByText(label)).toHaveLength(1);
     }
-    expect(within(nav).getByRole("link", { name: "Tambah transaksi" })).toHaveAttribute("href", "/transactions/new");
-    // five tabs, never six
-    expect(within(nav).getAllByRole("link")).toHaveLength(6);
+    expect(within(nav).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/",
+      "/transactions",
+      "/wallets",
+      "/savings",
+      "/more",
+    ]);
+    expect(within(nav).queryByRole("link", { name: "Tambah transaksi" })).not.toBeInTheDocument();
   });
 });
 
