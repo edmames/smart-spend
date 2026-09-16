@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/*
+ * SmartSpend — Phase 1 tokens.
+ *
+ * Mobile first (375 / 390 / 430px). Deliberately small: premium visual polish is
+ * Phase 2, but the palette, spacing and safe-area handling are set here so later
+ * restyling never has to touch layout logic.
+ */
+
+@theme {
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-surface: #ffffff;
+  --color-canvas: #f6f7fb;
+  --color-brand: #1d6ff2;
+  --color-brand-strong: #1758c4;
+  --color-brand-soft: #eaf1fe;
+  --color-income: #0f9d6f;
+  --color-income-soft: #e7f6ef;
+  --color-expense: #d43d51;
+  --color-expense-soft: #fdecef;
+  --color-savings: #7c4dff;
+  --color-savings-soft: #f0ecff;
+  --color-danger: #c92a2a;
+  --color-warning: #b7791f;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root {
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+  --nav-height: 62px;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  overscroll-behavior-y: none;
+}
+
+/* Nothing may create horizontal scroll on a phone. */
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+* {
+  min-width: 0;
+}
+
+.app-shell {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 43rem;
+  min-height: 100dvh;
+  background: var(--color-canvas);
+}
+
+.app-content {
+  padding: 0.75rem 0.875rem calc(var(--nav-height) + 2rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  .app-content {
+    padding-inline: 1.25rem;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}

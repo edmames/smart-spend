@@ -1,0 +1,14 @@
+{
+  "name": "SmartSpend",
+  "short_name": "SmartSpend",
+  "description": "Pencatat keuangan harian (IDR) yang berjalan di perangkat Anda.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7fb",
+  "theme_color": "#1d6ff2",
+  "lang": "id",
+  "categories": ["finance", "productivity"]
+}

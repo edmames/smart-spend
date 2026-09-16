@@ -1,0 +1,278 @@
+"use client";
+
+import { useId } from "react";
+import { useController, type Control, type FieldValues, type Path } from "react-hook-form";
+import { cn } from "@/lib/cn";
+import { formatNumberGrouping, parseIDRInput } from "@/domain/money";
+
+/**
+ * SmartSpend form primitives.
+ *
+ * Rules that matter for correctness (not cosmetics):
+ *  - Amount fields are text inputs with `inputMode="numeric"` whose *stored*
+ *    value is always an integer number of Rupiah (see `AmountInput`).
+ *  - Every control is a real `<label>`-associated element, keyboard reachable,
+ *    and errors are announced next to the field.
+ */
+
+export interface FieldProps {
+  label: string;
+  hint?: string;
+  error?: string;
+  htmlFor?: string;
+  optional?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function Field({ label, hint, error, htmlFor, optional, children, className }: FieldProps) {
+  return (
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <label htmlFor={htmlFor} className="flex items-baseline justify-between gap-2 text-sm font-medium text-ink">
+        <span>{label}</span>
+        {optional ? <span className="text-xs font-normal text-muted">opsional</span> : null}
+      </label>
+      {children}
+      {hint && !error ? <p className="text-xs text-muted">{hint}</p> : null}
+      {error ? (
+        <p role="alert" className="text-xs font-medium text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+const CONTROL =
+  "w-full min-w-0 rounded-xl border border-line bg-white px-3 py-2.5 text-[15px] text-ink shadow-xs outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-60";
+
+export function TextInput({
+  className,
+  inputRef,
+  ...props
+}: React.ComponentProps<"input"> & { inputRef?: React.Ref<HTMLInputElement> }) {
+  return <input ref={inputRef} className={cn(CONTROL, className)} {...props} />;
+}
+
+export function TextArea({
+  className,
+  inputRef,
+  ...props
+}: React.ComponentProps<"textarea"> & { inputRef?: React.Ref<HTMLTextAreaElement> }) {
+  return <textarea ref={inputRef} className={cn(CONTROL, "min-h-[72px] resize-y", className)} {...props} />;
+}
+
+export interface SelectOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
+}
+
+export function Select({
+  options,
+  placeholder,
+  className,
+  inputRef,
+  ...props
+}: React.ComponentProps<"select"> & {
+  options: SelectOption[];
+  placeholder?: string;
+  inputRef?: React.Ref<HTMLSelectElement>;
+}) {
+  return (
+    <div className="relative">
+      <select ref={inputRef} className={cn(CONTROL, "appearance-none pr-9", className)} {...props}>
+        {placeholder ? <option value="">{placeholder}</option> : null}
+        {options.map((option) => (
+          <option key={option.value} value={option.value} disabled={option.disabled}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <svg
+        aria-hidden
+        viewBox="0 0 20 20"
+        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+      >
+        <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
+
+/**
+ * Integer-Rupiah amount input.
+ *
+ * The *displayed* string is free-form ("1.000", "1000", "Rp 25.000"); what the
+ * form holds is always `number | null`, so no component can accidentally submit
+ * a float or a string. `inputMode="numeric"` keeps the numeric keypad on phones.
+ */
+export function AmountInput<T extends FieldValues>({
+  control,
+  name,
+  id,
+  "aria-describedby": describedBy,
+  autoComplete = "off",
+}: {
+  control: Control<T>;
+  name: Path<T>;
+  id?: string;
+  "aria-describedby"?: string;
+  autoComplete?: string;
+}) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const { field, fieldState } = useController({ control, name });
+  const value = field.value as unknown;
+  const display =
+    typeof value === "number" && Number.isFinite(value) ? formatNumberGrouping(value) : (field.value as string) ?? "";
+
+  return (
+    <div className="relative">
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] font-semibold",
+          fieldState.error ? "text-danger" : "text-muted",
+        )}
+      >
+        Rp
+      </span>
+      <input
+        id={inputId}
+        inputMode="numeric"
+        autoComplete={autoComplete}
+        aria-describedby={describedBy}
+        aria-invalid={fieldState.invalid}
+        className={cn(
+          CONTROL,
+          "pl-8 text-right font-semibold tabular-nums",
+          fieldState.error && "border-danger focus:border-danger focus:ring-danger/20",
+        )}
+        value={display}
+        onChange={(event) => {
+          const raw = event.target.value;
+          if (raw.trim() === "") {
+            field.onChange(null);
+            return;
+          }
+          const parsed = parseIDRInput(raw);
+          // Keep the raw text while it is unparseable so typing does not jump around.
+          field.onChange(parsed === null ? raw : parsed);
+        }}
+        onBlur={() => {
+          const parsed = typeof value === "number" ? value : parseIDRInput(String(value ?? ""));
+          field.onChange(parsed);
+          field.onBlur();
+        }}
+      />
+    </div>
+  );
+}
+
+/** A controlled calendar date: selected text is passed through unchanged. */
+export function CalendarDateInput<T extends FieldValues>({ control, name }: { control: Control<T>; name: Path<T> }) {
+  const { field } = useController({ control, name });
+  return (
+    <TextInput
+      type="date"
+      value={typeof field.value === "string" ? field.value : ""}
+      onChange={(event) => field.onChange(event.target.value)}
+      onBlur={field.onBlur}
+      name={field.name}
+      ref={field.ref}
+      aria-label="Tanggal"
+    />
+  );
+}
+
+export interface SegmentedOption<T extends string> {
+  value: T;
+  label: string;
+  icon?: React.ReactNode;
+  description?: string;
+}
+
+export function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+  columns = 3,
+}: {
+  value: T;
+  options: SegmentedOption<T>[];
+  onChange: (value: T) => void;
+  label?: string;
+  columns?: 2 | 3 | 5;
+}) {
+  const gridCols = columns === 2 ? "grid-cols-2" : columns === 5 ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-3";
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label ? <span className="text-sm font-medium text-ink">{label}</span> : null}
+      <div role="group" aria-label={label} className={cn("grid gap-1.5", gridCols)}>
+        {options.map((option) => {
+          const active = option.value === value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                "flex min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-[13px] font-semibold transition",
+                active
+                  ? "border-brand bg-brand text-white shadow-sm"
+                  : "border-line bg-white text-ink hover:border-brand/40 hover:bg-brand-soft/60",
+              )}
+            >
+              {option.icon}
+              <span className="truncate">{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function ChipToggle<T extends string>({
+  options,
+  selected,
+  onToggle,
+  label,
+  id,
+}: {
+  options: { value: T; label: string }[];
+  selected: T[];
+  onToggle: (value: T) => void;
+  label: string;
+  id?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span id={id} className="text-sm font-medium text-ink">
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((option) => {
+          const active = selected.includes(option.value);
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onToggle(option.value)}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                active ? "border-brand bg-brand text-white" : "border-line bg-white text-muted hover:text-ink",
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

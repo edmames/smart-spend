@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "types": ["node", "vitest/globals"],
+    "plugins": []
+  },
+  "include": ["tests/**/*.ts", "tests/**/*.tsx", "vitest.config.ts", "vitest.setup.ts", "playwright.config.ts", "e2e/**/*.ts"],
+  "exclude": ["node_modules"]
+}
