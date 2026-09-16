@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { createElement } from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { AmountInput } from "@/components/ui/forms";
 import { EmptyState, ProgressBar } from "@/components/ui/layout";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -28,10 +28,11 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ id: "w1" }),
 }));
 
-function AmountHarness({ onSubmit }: { onSubmit: (amount: number | null) => void }) {
+function AmountHarness({ onSubmit, revision = 0 }: { onSubmit: (amount: number | null) => void; revision?: number }) {
   const form = useForm<{ amount: number | null }>({ defaultValues: { amount: null } });
   return (
     <form
+      data-revision={revision}
       onSubmit={form.handleSubmit((values) => {
         onSubmit(values.amount);
       })}
@@ -40,6 +41,26 @@ function AmountHarness({ onSubmit }: { onSubmit: (amount: number | null) => void
       <button type="submit">Simpan</button>
     </form>
   );
+}
+
+/**
+ * Same control, but the canonical value the form actually holds is rendered next to
+ * it — that is the number the ledger would receive, so a test can assert on it
+ * without going through submit.
+ */
+function LiveAmountHarness() {
+  const form = useForm<{ amount: number | null }>({ defaultValues: { amount: null } });
+  const amount = useWatch({ control: form.control, name: "amount" });
+  return (
+    <div>
+      <AmountInput control={form.control} name="amount" id="amount" />
+      <output data-testid="canonical">{JSON.stringify(amount)}</output>
+    </div>
+  );
+}
+
+function canonical(): string {
+  return screen.getByTestId("canonical").textContent ?? "";
 }
 
 describe("AmountInput (money entry)", () => {
@@ -91,6 +112,128 @@ describe("AmountInput (money entry)", () => {
     render(<AmountHarness onSubmit={onSubmit} />);
     fireEvent.submit(screen.getByRole("button", { name: "Simpan" }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(null));
+  });
+});
+
+/**
+ * Regression — "the amount disappears on iPhone".
+ *
+ * On a phone the field re-groups itself after every keystroke, so by the time the
+ * user reaches the 5th digit the text on screen is `1.000` and the next key appends
+ * to *that*. The control used to keep that text verbatim once it stopped parsing,
+ * and blur then re-read `1.0000` as a decimal and stored `null` — the amount was
+ * gone. The invariants below are the ones that were broken.
+ */
+describe("AmountInput — amount survives typing, blur and re-render", () => {
+  beforeEach(() => {
+    configureRepository(createLocalStorageRepository(new MemoryStorageAdapter()));
+    useSmartSpendStore.getState().resetStore(emptyData());
+  });
+
+  it("keeps 100000 as the integer 100000 after typing it digit by digit and blurring", async () => {
+    const onSubmit = vi.fn();
+    render(<AmountHarness onSubmit={onSubmit} />);
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+
+    await userEvent.type(input, "100000");
+    expect(input.value).toBe("100.000");
+
+    fireEvent.blur(input); // dismissing the mobile keyboard
+    expect(input.value).toBe("100.000");
+
+    fireEvent.submit(screen.getByRole("button", { name: "Simpan" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(100000));
+  });
+
+  it("holds the canonical integer while the formatted display is 100.000", () => {
+    render(<LiveAmountHarness />);
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "100000" } });
+    expect(input.value).toBe("100.000");
+    expect(canonical()).toBe("100000");
+  });
+
+  it("never stores a formatted string as the canonical value", async () => {
+    render(<LiveAmountHarness />);
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+    await userEvent.type(input, "100000");
+    // whatever happens on screen, the form holds a number (or null) and never text
+    expect(JSON.parse(canonical())).toBe(100000);
+    expect(canonical()).not.toContain(".");
+    fireEvent.blur(input);
+    expect(JSON.parse(canonical())).toBe(100000);
+  });
+
+  it("does not treat a grouping separator as a decimal point", () => {
+    render(<LiveAmountHarness />);
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+    // parseFloat("100.000") would be 100; IDR has no sen, so it must be 100000.
+    fireEvent.change(input, { target: { value: "100.000" } });
+    expect(canonical()).toBe("100000");
+    fireEvent.blur(input);
+    expect(canonical()).toBe("100000");
+  });
+
+  it("does not wipe an amount when blurring text the formatter itself produced", () => {
+    render(<LiveAmountHarness />);
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+    // What a fast mobile keyboard leaves behind once the field has re-grouped.
+    fireEvent.change(input, { target: { value: "1.0000" } });
+    expect(canonical()).toBe("10000");
+    fireEvent.blur(input);
+    expect(canonical()).toBe("10000");
+    expect(input.value).toBe("10.000");
+  });
+
+  it("supports the documented maximum, Rp9.999.999.999, end to end", async () => {
+    const onSubmit = vi.fn();
+    render(<AmountHarness onSubmit={onSubmit} />);
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+
+    await userEvent.type(input, "9999999999");
+    expect(input.value).toBe("9.999.999.999");
+    fireEvent.blur(input);
+    expect(input.value).toBe("9.999.999.999");
+
+    fireEvent.submit(screen.getByRole("button", { name: "Simpan" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(9_999_999_999));
+  });
+
+  it("keeps the displayed amount and the canonical value across re-renders", () => {
+    const { rerender } = render(<LiveAmountHarness />);
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "100000" } });
+    fireEvent.blur(input);
+
+    // an unrelated parent re-render (another field changed, a list refreshed, ...)
+    rerender(<LiveAmountHarness />);
+    expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("100.000");
+    expect(canonical()).toBe("100000");
+  });
+
+  it("still clears deliberately when the user empties the field", async () => {
+    const onSubmit = vi.fn();
+    render(<AmountHarness onSubmit={onSubmit} />);
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+
+    await userEvent.type(input, "100000");
+    await userEvent.clear(input);
+    expect(input.value).toBe("");
+    fireEvent.blur(input);
+    expect(input.value).toBe("");
+
+    fireEvent.submit(screen.getByRole("button", { name: "Simpan" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(null));
+  });
+
+  it("accepts a pasted, already formatted amount without changing it", () => {
+    render(<LiveAmountHarness />);
+    const input = screen.getByRole("textbox") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Rp1.250.000" } });
+    expect(canonical()).toBe("1250000");
+    fireEvent.blur(input);
+    expect(canonical()).toBe("1250000");
+    expect(input.value).toBe("1.250.000");
   });
 });
 

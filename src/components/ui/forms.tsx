@@ -1,9 +1,9 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import { useController, type Control, type FieldValues, type Path } from "react-hook-form";
 import { cn } from "@/lib/cn";
-import { formatNumberGrouping, parseIDRInput } from "@/domain/money";
+import { amountFromMoneyInput, digitsFromMoneyInput, formatNumberGrouping } from "@/domain/money";
 
 /**
  * SmartSpend form primitives.
@@ -103,9 +103,18 @@ export function Select({
 /**
  * Integer-Rupiah amount input.
  *
- * The *displayed* string is free-form ("1.000", "1000", "Rp 25.000"); what the
- * form holds is always `number | null`, so no component can accidentally submit
- * a float or a string. `inputMode="numeric"` keeps the numeric keypad on phones.
+ * Two values are kept strictly apart, and that separation *is* the fix for the
+ * "amount disappears on iPhone" bug:
+ *
+ *  - the **canonical** value the form holds is always an integer number of Rupiah,
+ *    or `null` for an empty field. Nothing else is ever written to the form, so no
+ *    amount of reformatting can change the money.
+ *  - the **draft** is the text on screen *while the user is typing*. It is rebuilt
+ *    from the digits the user entered (`100000` -> `100.000`) and discarded on blur.
+ *
+ * Because the draft never leaks into the form, and because blur only drops it, the
+ * mobile keyboard dismissing (or any re-render) cannot lose an amount. `inputMode`
+ * stays `numeric` so phones show the number pad.
  */
 export function AmountInput<T extends FieldValues>({
   control,
@@ -123,9 +132,11 @@ export function AmountInput<T extends FieldValues>({
   const generatedId = useId();
   const inputId = id ?? generatedId;
   const { field, fieldState } = useController({ control, name });
-  const value = field.value as unknown;
-  const display =
-    typeof value === "number" && Number.isFinite(value) ? formatNumberGrouping(value) : (field.value as string) ?? "";
+  const [draft, setDraft] = useState<string | null>(null);
+  const amount = typeof field.value === "number" && Number.isFinite(field.value) ? field.value : null;
+  // While editing, the user's own digits are shown re-grouped; once the field is left
+  // (or rendered again) the canonical number is the single source of the display.
+  const display = draft ?? (amount === null ? "" : formatNumberGrouping(amount));
 
   return (
     <div className="relative">
@@ -152,17 +163,23 @@ export function AmountInput<T extends FieldValues>({
         value={display}
         onChange={(event) => {
           const raw = event.target.value;
-          if (raw.trim() === "") {
-            field.onChange(null);
+          const next = amountFromMoneyInput(raw);
+          if (next === null) {
+            const digits = digitsFromMoneyInput(raw);
+            setDraft(digits.length === 0 ? "" : raw);
+            // An emptied field is the one and only way to clear an amount. Digits we
+            // cannot represent exactly stay on screen only — never a guessed number.
+            if (digits.length === 0) field.onChange(null);
             return;
           }
-          const parsed = parseIDRInput(raw);
-          // Keep the raw text while it is unparseable so typing does not jump around.
-          field.onChange(parsed === null ? raw : parsed);
+          setDraft(formatNumberGrouping(next));
+          field.onChange(next);
         }}
         onBlur={() => {
-          const parsed = typeof value === "number" ? value : parseIDRInput(String(value ?? ""));
-          field.onChange(parsed);
+          // Every keystroke already wrote the canonical amount, so blur only hands the
+          // display back to it. It must never re-parse the formatted text: reading
+          // "1.0000" as a decimal is what used to wipe the field.
+          setDraft(null);
           field.onBlur();
         }}
       />

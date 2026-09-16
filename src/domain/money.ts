@@ -88,6 +88,35 @@ export function formatNumberGrouping(amount: number): string {
 }
 
 /**
+ * The digits a human typed into an amount field.
+ *
+ * Everything else the IDR display can contain — the `Rp` prefix, the grouping
+ * separators `.` and `,`, spaces, and the non-breaking spaces some mobile keyboards
+ * send — is decoration and is dropped. This is the projection an amount field uses
+ * while it is being edited, so a *formatted* string can never be read as a decimal:
+ * `"100.000"` is 100000 Rupiah, never 100.
+ */
+export function digitsFromMoneyInput(raw: string | null | undefined): string {
+  if (raw == null) return "";
+  return String(raw).replace(/\D/g, "");
+}
+
+/**
+ * Live amount for whatever is currently on screen while a field is being edited.
+ *
+ * `null` means "no amount": either the field is empty — which is exactly how a user
+ * clears it — or the text carries more digits than a safe integer can represent, in
+ * which case no guessed number is invented. Anything else is returned as an exact
+ * integer number of Rupiah.
+ */
+export function amountFromMoneyInput(raw: string | null | undefined): number | null {
+  const digits = digitsFromMoneyInput(raw);
+  if (digits.length === 0) return null;
+  const value = Number(digits);
+  return Number.isSafeInteger(value) ? value : null;
+}
+
+/**
  * Parse whatever a human typed into an integer amount of Rupiah.
  *
  * Accepted: `125000`, `125.000`, `1.250.000`, `125,000`, `125 000`,

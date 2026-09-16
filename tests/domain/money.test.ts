@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  amountFromMoneyInput,
+  digitsFromMoneyInput,
   formatIDR,
+  formatNumberGrouping,
   formatSignedIDR,
   isMoneyAmount,
   MAX_MONEY,
@@ -91,6 +94,67 @@ describe("parseIDRInput", () => {
     for (const amount of [1, 999, 1000, 123456789, MAX_MONEY]) {
       const pretty = formatIDR(amount).replace("Rp", "");
       expect(parseIDRInput(pretty)).toBe(amount);
+    }
+  });
+});
+
+/**
+ * Regression — the amount field.
+ * The display is *formatted* text (`100.000`) while the canonical amount is the
+ * integer `100000`. These helpers are the projection between the two, and they must
+ * never turn a grouped string into a decimal (that is what wiped amounts on mobile).
+ */
+describe("amount field projection (digitsFromMoneyInput / amountFromMoneyInput)", () => {
+  it.each([
+    ["100000", "100000"],
+    ["100.000", "100000"],
+    ["Rp100.000", "100000"],
+    ["Rp 1.000.000", "1000000"],
+    ["1,250,000", "1250000"],
+    ["  100 000  ", "100000"],
+    ["1.0000", "10000"], // a mobile keyboard appending to re-grouped text
+    ["", ""],
+    ["abc", ""],
+    ["Rp", ""],
+  ])("reduces %j to the digits %j", (input, digits) => {
+    expect(digitsFromMoneyInput(input)).toBe(digits);
+    expect(digitsFromMoneyInput(null)).toBe("");
+    expect(digitsFromMoneyInput(undefined)).toBe("");
+  });
+
+  it.each([
+    ["100000", 100000],
+    ["100.000", 100000],
+    ["Rp100.000", 100000],
+    ["1.0000", 10000],
+    ["9.999.999.999", MAX_MONEY],
+    ["9999999999", MAX_MONEY],
+    ["0", 0],
+    ["1", 1],
+  ])("reads %j as the integer %s", (input, amount) => {
+    expect(amountFromMoneyInput(input)).toBe(amount);
+  });
+
+  it("never reads a grouping separator as a decimal point", () => {
+    // parseFloat("100.000") would be 100 — IDR has no sen, so this must be 100000.
+    expect(amountFromMoneyInput("100.000")).toBe(100000);
+    expect(amountFromMoneyInput("1.000.000")).toBe(1000000);
+    expect(formatNumberGrouping(100000)).toBe("100.000");
+  });
+
+  it.each(["", "   ", "abc", "Rp", null, undefined])("reports %j as no amount (null)", (input) => {
+    expect(amountFromMoneyInput(input)).toBeNull();
+  });
+
+  it("refuses digits too large to represent exactly instead of rounding them", () => {
+    expect(amountFromMoneyInput("99999999999999999999")).toBeNull();
+  });
+
+  it("round-trips the display through the projection for every magnitude", () => {
+    for (const amount of [0, 1, 999, 1000, 100000, 125000, 1000000, MAX_MONEY]) {
+      expect(amountFromMoneyInput(formatNumberGrouping(amount))).toBe(amount);
+      // ...and the parser used by imports/other callers agrees too
+      expect(parseIDRInput(formatNumberGrouping(amount))).toBe(amount);
     }
   });
 });
