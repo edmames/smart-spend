@@ -11,17 +11,17 @@ import {
   persistedDataSchema,
   serializePersistedData,
 } from "@/repository/storage-schema";
-import { at, emptyData, makeBudget, makeTarget, makeTx, makeWallet } from "../fixtures";
+import { at, emptyData, makeBudget, makeTarget, makeTx, makeWallet, on } from "../fixtures";
 
 /**
  * Spec §24–§33 — the versioned, Zod-validated persistence envelope.
  * Nothing stored is ever trusted: bad JSON must be *reported*, not repaired.
  */
 
-describe("persistedDataSchema (v1 shape)", () => {
+describe("persistedDataSchema (stored shape)", () => {
   it("accepts the documented envelope", () => {
     const payload = {
-      version: 1,
+      version: STORAGE_VERSION,
       wallets: [makeWallet("w1")],
       transactions: [
         makeTx({ id: "t1", type: "expense", amount: 1000, sourceWalletId: "w1", categoryId: "makanan" }),
@@ -34,7 +34,8 @@ describe("persistedDataSchema (v1 shape)", () => {
   });
 
   it("rejects an unknown version", () => {
-    expect(persistedDataSchema.safeParse({ ...EMPTY_DATA, version: 2 }).success).toBe(false);
+    expect(persistedDataSchema.safeParse({ ...EMPTY_DATA, version: STORAGE_VERSION + 1 }).success).toBe(false);
+    expect(persistedDataSchema.safeParse({ ...EMPTY_DATA, version: STORAGE_VERSION - 1 }).success).toBe(false);
     expect(persistedDataSchema.safeParse({ ...EMPTY_DATA, version: "1" }).success).toBe(false);
   });
 
@@ -59,9 +60,15 @@ describe("persistedDataSchema (v1 shape)", () => {
     expect(persistedDataSchema.safeParse({ ...EMPTY_DATA, transactions: [transaction] }).success).toBe(false);
   });
 
-  it("rejects a timestamp that is not an ISO instant", () => {
-    const transaction = { ...makeTx({ id: "t1" }), date: "15/08/2026" } as never;
-    expect(persistedDataSchema.safeParse({ ...EMPTY_DATA, transactions: [transaction] }).success).toBe(false);
+  it("rejects a transaction date that is not a YYYY-MM-DD calendar day", () => {
+    // Otherwise valid record: only the date varies, so the schema is really
+    // being tested on the date format and never on another field.
+    const valid = makeTx({ id: "t1", type: "opening_balance", destinationWalletId: "w1", date: on(2026, 8, 1) });
+    expect(persistedDataSchema.safeParse({ ...EMPTY_DATA, transactions: [valid] }).success).toBe(true);
+
+    for (const date of ["15/08/2026", "2026-02-30", "2026-8-1", at(2026, 8, 1)]) {
+      expect(persistedDataSchema.safeParse({ ...EMPTY_DATA, transactions: [{ ...valid, date }] }).success).toBe(false);
+    }
   });
 });
 
@@ -85,12 +92,30 @@ describe("migratePayload", () => {
   it("wraps a version-less (v0) payload that looks like our shape", () => {
     const result = migratePayload({ wallets: [], transactions: [] });
     expect(result).not.toBeNull();
-    expect(result?.payload.version).toBe(1);
-    expect(result?.applied).toHaveLength(1);
+    expect(result?.payload.version).toBe(STORAGE_VERSION);
+    expect(result?.applied.map((migration) => migration.to)).toEqual([1, STORAGE_VERSION]);
+  });
+
+  it("converts v1 transaction instants into Asia/Jakarta calendar days (v1 -> v2)", () => {
+    // 2026-08-01T20:00Z is already 2026-08-02 in Jakarta (UTC+7), which is the day
+    // the user meant when they recorded it; the stored instant must not be kept.
+    const legacy = {
+      version: 1,
+      wallets: [],
+      transactions: [makeTx({ id: "t1", date: "2026-08-01T20:00:00.000Z" })],
+      savingsTargets: [],
+      budgets: [],
+    };
+    const migrated = migratePayload(legacy);
+    expect(migrated).not.toBeNull();
+    expect((migrated?.payload.transactions as { date: string }[])[0]?.date).toBe("2026-08-02");
+    expect(migrated?.applied.map((migration) => migration.description)).toEqual([
+      expect.stringMatching(/calendar dates/i),
+    ]);
   });
 
   it("refuses a newer schema version instead of silently rewriting it", () => {
-    expect(migratePayload({ version: 2, wallets: [] })).toBeNull();
+    expect(migratePayload({ version: STORAGE_VERSION + 1, wallets: [] })).toBeNull();
     const parsed = parsePersistedData({ version: 7, wallets: [] });
     expect(parsed.ok).toBe(false);
     if (!parsed.ok) {
@@ -137,7 +162,7 @@ describe("parsePersistedJson (corruption handling)", () => {
           amount: 5000,
           sourceWalletId: "w1",
           categoryId: "makanan",
-          date: at(2026, 8, 1),
+          date: on(2026, 8, 1),
         }),
       ],
     });
@@ -175,7 +200,7 @@ describe("parsePersistedJson (corruption handling)", () => {
     const text = serializePersistedData(data, at(2026, 9, 1));
     // The downloaded export (with appName/schemaVersion/exportedAt) must be
     // readable by the same parser that reads localStorage.
-    expect(JSON.parse(text)).toMatchObject({ appName: "SmartSpend", schemaVersion: 1, exportedAt: at(2026, 9, 1) });
+    expect(JSON.parse(text)).toMatchObject({ appName: "SmartSpend", schemaVersion: STORAGE_VERSION, exportedAt: at(2026, 9, 1) });
     const parsed = parsePersistedJson(text);
     if (!parsed.ok) throw new Error(JSON.stringify(parsed.failure.issues));
     expect(parsed.ok).toBe(true);

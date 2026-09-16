@@ -8,7 +8,7 @@ import {
   validateTransaction,
 } from "@/domain/validation";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/domain/categories";
-import { at, emptyData, makeBudget, makeTarget, makeTx, makeWallet } from "../fixtures";
+import { at, emptyData, makeBudget, makeTarget, makeTx, makeWallet, on } from "../fixtures";
 
 /**
  * Spec §37–§45 — validation rules that protect the ledger's history.
@@ -20,8 +20,8 @@ describe("validateLedgerChronology (walk in order, refuse any negative moment)",
   it("accepts money arriving before it is spent", () => {
     const result = validateLedgerChronology(
       [
-        makeTx({ id: "a", type: "income", amount: 100_000, destinationWalletId: "w1", date: at(2026, 8, 1, 9) }),
-        makeTx({ id: "b", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 1, 10) }),
+        makeTx({ id: "a", type: "income", amount: 100_000, destinationWalletId: "w1", date: on(2026, 8, 1) }),
+        makeTx({ id: "b", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 8, 2) }),
       ],
       { wallets: walletsWith("w1") },
     );
@@ -31,8 +31,8 @@ describe("validateLedgerChronology (walk in order, refuse any negative moment)",
   it("rejects spending money that only arrives later", () => {
     const result = validateLedgerChronology(
       [
-        makeTx({ id: "a", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 1, 9) }),
-        makeTx({ id: "b", type: "income", amount: 100_000, destinationWalletId: "w1", date: at(2026, 8, 1, 10) }),
+        makeTx({ id: "a", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 8, 1) }),
+        makeTx({ id: "b", type: "income", amount: 100_000, destinationWalletId: "w1", date: on(2026, 8, 2) }),
       ],
       { wallets: walletsWith("w1") },
     );
@@ -41,8 +41,8 @@ describe("validateLedgerChronology (walk in order, refuse any negative moment)",
     expect(result.error?.message).toMatch(/w1/i);
   });
 
-  it("allows an expense covered by income at the exact same instant (createdAt breaks the tie)", () => {
-    const same = at(2026, 8, 1, 9);
+  it("allows an expense covered by income on the same day (createdAt breaks the tie)", () => {
+    const same = on(2026, 8, 1);
     const income = makeTx({ id: "a", type: "income", amount: 100_000, destinationWalletId: "w1", date: same, createdAt: at(2026, 8, 1, 9) });
     const expense = makeTx({
       id: "b",
@@ -72,7 +72,7 @@ describe("validateLedgerChronology (walk in order, refuse any negative moment)",
           amount: 50_000,
           savingsTargetId: "s1",
           destinationWalletId: "w1",
-          date: at(2026, 8, 1),
+          date: on(2026, 8, 1),
         }),
       ],
       { wallets: walletsWith("w1"), savingsTargets: [makeTarget("s1")] },
@@ -85,15 +85,15 @@ describe("validateLedgerChronology (walk in order, refuse any negative moment)",
   it("treats a transfer as money leaving and arriving on the same record", () => {
     const okResult = validateLedgerChronology(
       [
-        makeTx({ id: "o", type: "opening_balance", amount: 100_000, destinationWalletId: "w1", date: at(2026, 8, 1) }),
-        makeTx({ id: "t", type: "transfer", amount: 100_000, sourceWalletId: "w1", destinationWalletId: "w2", date: at(2026, 8, 2) }),
+        makeTx({ id: "o", type: "opening_balance", amount: 100_000, destinationWalletId: "w1", date: on(2026, 8, 1) }),
+        makeTx({ id: "t", type: "transfer", amount: 100_000, sourceWalletId: "w1", destinationWalletId: "w2", date: on(2026, 8, 2) }),
       ],
       { wallets: walletsWith("w1", "w2") },
     );
     expect(okResult.valid).toBe(true);
 
     const badResult = validateLedgerChronology(
-      [makeTx({ id: "t", type: "transfer", amount: 10_000, sourceWalletId: "w1", destinationWalletId: "w2", date: at(2026, 8, 2) })],
+      [makeTx({ id: "t", type: "transfer", amount: 10_000, sourceWalletId: "w1", destinationWalletId: "w2", date: on(2026, 8, 2) })],
       { wallets: walletsWith("w1", "w2") },
     );
     expect(badResult.valid).toBe(false);
@@ -102,8 +102,8 @@ describe("validateLedgerChronology (walk in order, refuse any negative moment)",
   it("does not let an unrelated wallet's money cover an outflow", () => {
     const result = validateLedgerChronology(
       [
-        makeTx({ id: "a", type: "opening_balance", amount: 100_000, destinationWalletId: "w2", date: at(2026, 8, 1) }),
-        makeTx({ id: "b", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 2) }),
+        makeTx({ id: "a", type: "opening_balance", amount: 100_000, destinationWalletId: "w2", date: on(2026, 8, 1) }),
+        makeTx({ id: "b", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 8, 2) }),
       ],
       { wallets: walletsWith("w1", "w2") },
     );
@@ -112,8 +112,8 @@ describe("validateLedgerChronology (walk in order, refuse any negative moment)",
 
   it("ignores the ordering of the input array (it sorts first)", () => {
     const ledger = [
-      makeTx({ id: "a", type: "income", amount: 100_000, destinationWalletId: "w1", date: at(2026, 8, 1) }),
-      makeTx({ id: "b", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 5) }),
+      makeTx({ id: "a", type: "income", amount: 100_000, destinationWalletId: "w1", date: on(2026, 8, 1) }),
+      makeTx({ id: "b", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 8, 5) }),
     ];
     expect(validateLedgerChronology(ledger, { wallets: walletsWith("w1") }).valid).toBe(true);
     expect(validateLedgerChronology([...ledger].reverse(), { wallets: walletsWith("w1") }).valid).toBe(true);
@@ -124,9 +124,9 @@ describe("validateTransaction (single record rules)", () => {
   // The fixture ledger starts each wallet with plenty of money, so the only thing
   // a test can trip on is the rule it is actually about.
   const seed = [
-    makeTx({ id: "seed-w1", type: "opening_balance", amount: 100_000_000, destinationWalletId: "w1", date: at(2026, 1, 1) }),
-    makeTx({ id: "seed-w2", type: "opening_balance", amount: 100_000_000, destinationWalletId: "w2", date: at(2026, 1, 1) }),
-    makeTx({ id: "seed-s1", type: "savings_deposit", amount: 1_000_000, sourceWalletId: "w1", savingsTargetId: "s1", date: at(2026, 1, 1) }),
+    makeTx({ id: "seed-w1", type: "opening_balance", amount: 100_000_000, destinationWalletId: "w1", date: on(2026, 1, 1) }),
+    makeTx({ id: "seed-w2", type: "opening_balance", amount: 100_000_000, destinationWalletId: "w2", date: on(2026, 1, 1) }),
+    makeTx({ id: "seed-s1", type: "savings_deposit", amount: 1_000_000, sourceWalletId: "w1", savingsTargetId: "s1", date: on(2026, 1, 1) }),
   ];
   const context = (extra: Record<string, unknown> = {}) => ({
     wallets: walletsWith("w1", "w2"),
@@ -185,7 +185,7 @@ describe("validateTransaction (single record rules)", () => {
   });
 
   it("accepts every category of its own side", () => {
-    const date = at(2026, 8, 1);
+    const date = on(2026, 8, 1);
     for (const category of EXPENSE_CATEGORIES) {
       const result = check(
         makeTx({ id: "t", type: "expense", amount: 1_000, sourceWalletId: "w1", categoryId: category.id, date }) as never,
@@ -214,19 +214,30 @@ describe("validateTransaction (single record rules)", () => {
 
   it("checks the balance available at that moment, not the current balance", () => {
     const ledger = [
-      makeTx({ id: "o", type: "opening_balance", amount: 100_000, destinationWalletId: "w1", date: at(2026, 8, 1) }),
-      makeTx({ id: "x", type: "expense", amount: 90_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 2) }),
+      makeTx({ id: "o", type: "opening_balance", amount: 100_000, destinationWalletId: "w1", date: on(2026, 8, 1) }),
+      makeTx({ id: "x", type: "expense", amount: 90_000, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 8, 2) }),
     ];
-    // 20.000 left today, but only 100.000 was available on Aug 1
+    // Same calendar day as the opening balance, but created after it (createdAt
+    // breaks the tie), so 100.000 was available then — 20.000 is only left today.
+    const candidate = (id: string, amount: number) =>
+      makeTx({
+        id,
+        type: "expense",
+        amount,
+        sourceWalletId: "w1",
+        categoryId: "makanan",
+        date: on(2026, 8, 1),
+        createdAt: at(2026, 8, 1, 12),
+      });
     const early = check(
-      makeTx({ id: "n", type: "expense", amount: 50_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 1, 12) }) as never,
-      context({ transactions: ledgerWithCandidate(ledger, makeTx({ id: "n", type: "expense", amount: 50_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 1, 12) })) }) as never,
+      candidate("n", 50_000) as never,
+      context({ transactions: ledgerWithCandidate(ledger, candidate("n", 50_000)) }) as never,
     );
     expect(early.ok).toBe(true);
 
     const tooMuch = check(
-      makeTx({ id: "n2", type: "expense", amount: 150_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 1, 12) }) as never,
-      context({ transactions: ledgerWithCandidate(ledger, makeTx({ id: "n2", type: "expense", amount: 150_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 1, 12) })) }) as never,
+      candidate("n2", 150_000) as never,
+      context({ transactions: ledgerWithCandidate(ledger, candidate("n2", 150_000)) }) as never,
     );
     expect(tooMuch.ok).toBe(false);
     if (!tooMuch.ok) expect(tooMuch.error.code).toBe("INSUFFICIENT_WALLET_BALANCE");
@@ -234,7 +245,7 @@ describe("validateTransaction (single record rules)", () => {
 
   it("rejects a withdrawal beyond the savings balance at that moment", () => {
     const ledger = [
-      makeTx({ id: "d", type: "savings_deposit", amount: 40_000, sourceWalletId: "w1", savingsTargetId: "s1", date: at(2026, 8, 1) }),
+      makeTx({ id: "d", type: "savings_deposit", amount: 40_000, sourceWalletId: "w1", savingsTargetId: "s1", date: on(2026, 8, 1) }),
     ];
     const result = validateTransaction(
       makeTx({
@@ -243,7 +254,7 @@ describe("validateTransaction (single record rules)", () => {
         amount: 60_000,
         destinationWalletId: "w1",
         savingsTargetId: "s1",
-        date: at(2026, 8, 2),
+        date: on(2026, 8, 2),
       }),
       { ...context(), transactions: ledgerWithCandidate(ledger, ledger[0]!) },
     );
@@ -254,7 +265,7 @@ describe("validateTransaction (single record rules)", () => {
   it("rejects archived wallets as the destination of new money", () => {
     const archived = [makeWallet("w1", { archivedAt: at(2026, 7, 1) }), makeWallet("w2")];
     const result = validateTransaction(
-      makeTx({ id: "t", type: "income", amount: 1_000, destinationWalletId: "w1", date: at(2026, 8, 1) }),
+      makeTx({ id: "t", type: "income", amount: 1_000, destinationWalletId: "w1", date: on(2026, 8, 1) }),
       { wallets: archived, savingsTargets: [], transactions: [], now: new Date(at(2026, 9, 1)) },
     );
     expect(result.ok).toBe(false);
@@ -265,13 +276,13 @@ describe("validateTransaction (single record rules)", () => {
     const now = new Date(at(2026, 9, 1, 12));
     expect(
       validateTransaction(
-        makeTx({ id: "t", type: "expense", amount: 1_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 9, 2) }),
+        makeTx({ id: "t", type: "expense", amount: 1_000, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 9, 2) }),
         { ...context(), now },
       ).ok,
     ).toBe(false);
     expect(
       validateTransaction(
-        makeTx({ id: "t", type: "expense", amount: 1_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 9, 1, 6) }),
+        makeTx({ id: "t", type: "expense", amount: 1_000, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 9, 1) }),
         { wallets: walletsWith("w1"), savingsTargets: [], transactions: [makeTx({ id: "o", type: "opening_balance", amount: 100_000, destinationWalletId: "w1" })], now },
       ).ok,
     ).toBe(true);
@@ -333,8 +344,8 @@ describe("candidate ledger helpers", () => {
   });
 
   it("ledgerWithCandidate replaces the stored version instead of duplicating it", () => {
-    const stored = [makeTx({ id: "a", amount: 1_000, date: at(2026, 8, 1) })];
-    const candidate = makeTx({ id: "a", amount: 2_000, date: at(2026, 8, 2) });
+    const stored = [makeTx({ id: "a", amount: 1_000, date: on(2026, 8, 1) })];
+    const candidate = makeTx({ id: "a", amount: 2_000, date: on(2026, 8, 2) });
     const merged = ledgerWithCandidate(stored, candidate);
     expect(merged).toHaveLength(1);
     expect(merged[0]?.amount).toBe(2_000);
@@ -342,8 +353,8 @@ describe("candidate ledger helpers", () => {
   });
 
   it("ledgerWithCandidate keeps a deterministic order", () => {
-    const stored = [makeTx({ id: "a", date: at(2026, 8, 1) }), makeTx({ id: "c", date: at(2026, 8, 3) })];
-    const merged = ledgerWithCandidate(stored, makeTx({ id: "b", date: at(2026, 8, 2) }));
+    const stored = [makeTx({ id: "a", date: on(2026, 8, 1) }), makeTx({ id: "c", date: on(2026, 8, 3) })];
+    const merged = ledgerWithCandidate(stored, makeTx({ id: "b", date: on(2026, 8, 2) }));
     expect(merged.map((t) => t.id)).toEqual(["a", "b", "c"]);
   });
 });

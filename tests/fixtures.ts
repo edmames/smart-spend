@@ -11,6 +11,9 @@ import { DEFAULT_SETTINGS } from "@/domain/models";
 
 export const EPOCH = "2026-01-01T00:00:00.000Z";
 
+/** Default financial calendar day for records whose date is not the point of the test. */
+export const CALENDAR_EPOCH = "2026-01-01";
+
 export function makeWallet(
   id: string,
   overrides: Partial<Wallet> = {},
@@ -80,7 +83,7 @@ export function makeTx(overrides: TxOverrides = {}): Transaction {
     savingsTargetId: null,
     paymentMethod: null,
     note: null,
-    date: EPOCH,
+    date: CALENDAR_EPOCH,
     createdAt: EPOCH,
     updatedAt: EPOCH,
     ...rest,
@@ -103,4 +106,13 @@ export function emptyData(overrides: Partial<PersistedData> = {}): PersistedData
 /** ISO instant with an explicit UTC day, e.g. `at(2026, 1, 2)` -> 2026-01-02T00:00:00Z. */
 export function at(year: number, month: number, day: number, hour = 0, minute = 0): string {
   return new Date(Date.UTC(year, month - 1, day, hour, minute)).toISOString();
+}
+
+/**
+ * Financial calendar day — the `date` of a transaction is `YYYY-MM-DD` text, never
+ * an instant, e.g. `on(2026, 1, 2)` -> "2026-01-02".
+ */
+export function on(year: number, month: number, day: number): string {
+  const pad = (value: number) => `${value}`.padStart(2, "0");
+  return `${`${year}`.padStart(4, "0")}-${pad(month)}-${pad(day)}`;
 }

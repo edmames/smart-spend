@@ -14,7 +14,7 @@ import { useSmartSpendStore, configureRepository } from "@/app/store";
 import { useToastStore } from "@/app/toast";
 import { createLocalStorageRepository } from "@/repository/repository";
 import { MemoryStorageAdapter } from "@/repository/storage";
-import { at, emptyData, makeTarget, makeTx, makeWallet } from "../fixtures";
+import { emptyData, makeTarget, makeTx, makeWallet, on } from "../fixtures";
 
 /**
  * Component tests (spec §54–§56 for the parts that are testable without a browser).
@@ -196,7 +196,7 @@ describe("TransactionRow", () => {
       categoryId: "makanan",
       paymentMethod: "qris",
       note: "Makan siang",
-      date: at(2026, 8, 15, 12),
+      date: on(2026, 8, 15),
     });
     render(<TransactionRow transaction={transaction} />);
     expect(screen.getByText("-Rp100.000")).toBeInTheDocument();
@@ -214,7 +214,7 @@ describe("TransactionRow", () => {
       amount: 200_000,
       sourceWalletId: "w1",
       destinationWalletId: "w2",
-      date: at(2026, 8, 16, 9),
+      date: on(2026, 8, 16),
     });
     render(<TransactionRow transaction={transfer} />);
     expect(screen.getByText("Rp200.000")).toBeInTheDocument(); // no sign: not income or expense
@@ -232,7 +232,7 @@ describe("TransactionRow", () => {
       amount: 300_000,
       sourceWalletId: "w1",
       savingsTargetId: "s1",
-      date: at(2026, 8, 17, 9),
+      date: on(2026, 8, 17),
     });
     render(<TransactionRow transaction={deposit} />);
     expect(screen.getByText("BCA → Dana Darurat")).toBeInTheDocument();
@@ -264,7 +264,7 @@ describe("TransactionForm (real create flow, no placeholders)", () => {
         emptyData({
           wallets: [makeWallet("w1", { name: "BCA" })],
           transactions: [
-            makeTx({ id: "o1", type: "opening_balance", amount: 500_000, destinationWalletId: "w1", date: at(2026, 1, 1) }),
+            makeTx({ id: "o1", type: "opening_balance", amount: 500_000, destinationWalletId: "w1", date: on(2026, 1, 1) }),
           ],
         }),
       );

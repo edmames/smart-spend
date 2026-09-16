@@ -18,7 +18,8 @@ import {
   validateImportPayload,
 } from "@/app/backup";
 import { calculateSavingsBalance, calculateTotalMoney, calculateWalletBalance } from "@/domain/ledger";
-import { at, emptyData } from "../fixtures";
+import { STORAGE_VERSION } from "@/repository/storage-schema";
+import { at, emptyData, on } from "../fixtures";
 
 /**
  * Spec §42 + §63–§66 — export / import round trip and CRUD mutation paths.
@@ -45,7 +46,7 @@ function scenario() {
     applyCreateTransaction(data, {
       type: "expense",
       amount: 250_000,
-      date: at(2026, 8, 10),
+      date: on(2026, 8, 10),
       sourceWalletId: "bca",
       categoryId: "makanan",
       paymentMethod: "qris",
@@ -57,7 +58,7 @@ function scenario() {
     applyCreateTransaction(data, {
       type: "savings_deposit",
       amount: 300_000,
-      date: at(2026, 8, 11),
+      date: on(2026, 8, 11),
       sourceWalletId: "bca",
       savingsTargetId: "dana",
       now: NOW,
@@ -74,7 +75,7 @@ describe("CRUD mutations keep the ledger consistent", () => {
       applyUpdateTransaction(
         data,
         expense.id,
-        { type: "expense", amount: 400_000, date: at(2026, 8, 10), sourceWalletId: "bca", categoryId: "makanan", now: NOW },
+        { type: "expense", amount: 400_000, date: on(2026, 8, 10), sourceWalletId: "bca", categoryId: "makanan", now: NOW },
       ),
     );
     // 1.000.000 opening - 400.000 expense - 300.000 deposit
@@ -110,7 +111,7 @@ describe("CRUD mutations keep the ledger consistent", () => {
     const tooBig = applyUpdateTransaction(
       data,
       expense.id,
-      { type: "expense", amount: 1_000_000, date: at(2026, 8, 10), sourceWalletId: "bca", categoryId: "makanan", now: NOW },
+      { type: "expense", amount: 1_000_000, date: on(2026, 8, 10), sourceWalletId: "bca", categoryId: "makanan", now: NOW },
     );
     // ...but an edit that leaves nothing for the deposit recorded the next day is
     // still refused, because that deposit would have to come from an empty wallet.
@@ -120,7 +121,7 @@ describe("CRUD mutations keep the ledger consistent", () => {
       applyUpdateTransaction(
         data,
         expense.id,
-        { type: "expense", amount: 700_000, date: at(2026, 8, 10), sourceWalletId: "bca", categoryId: "makanan", now: NOW },
+        { type: "expense", amount: 700_000, date: on(2026, 8, 10), sourceWalletId: "bca", categoryId: "makanan", now: NOW },
       ),
     );
     expect(calculateWalletBalance(smaller.transactions, "bca")).toBe(0);
@@ -156,7 +157,7 @@ describe("export payload (spec §63)", () => {
       ["appName", "budgets", "exportedAt", "schemaVersion", "settings", "savingsTargets", "transactions", "version", "wallets"].sort(),
     );
     expect(payload.appName).toBe("SmartSpend");
-    expect(payload.schemaVersion).toBe(1);
+    expect(payload.schemaVersion).toBe(STORAGE_VERSION);
     expect(payload.exportedAt).toBe(NOW.toISOString());
     expect(payload).toMatchObject({
       wallets: data.wallets,
@@ -185,7 +186,7 @@ describe("import validation (spec §64–§65)", () => {
       expect(result.data.transactions).toEqual(data.transactions);
       expect(result.data.savingsTargets).toEqual(data.savingsTargets);
       expect(result.data.budgets).toEqual(data.budgets);
-      expect(result.data.version).toBe(1);
+      expect(result.data.version).toBe(STORAGE_VERSION);
       expect(result.preview.counts).toEqual({ wallets: 2, transactions: 3, savingsTargets: 1, budgets: 0 });
       expect(result.preview.firstTransactionDate).toBeTruthy();
       expect(result.warnings).toEqual([]);
@@ -240,7 +241,7 @@ describe("import validation (spec §64–§65)", () => {
           amount: 1000,
           sourceWalletId: "missing-wallet",
           categoryId: "makanan",
-          date: at(2026, 8, 1),
+          date: on(2026, 8, 1),
           createdAt: at(2026, 8, 1),
           updatedAt: at(2026, 8, 1),
         },
@@ -254,9 +255,10 @@ describe("import validation (spec §64–§65)", () => {
   it("refuses a newer schema version and non-object files", () => {
     expect(validateImportPayload([]).ok).toBe(false);
     expect(validateImportPayload("nope").ok).toBe(false);
-    expect(validateImportPayload({ version: 2, wallets: [] }).ok).toBe(false);
-    const result = validateImportPayload({ version: 2, wallets: [] });
-    if (!result.ok) expect(result.message).toMatch(/v2/i);
+    const newer = { version: STORAGE_VERSION + 1, wallets: [] };
+    expect(validateImportPayload(newer).ok).toBe(false);
+    const result = validateImportPayload(newer);
+    if (!result.ok) expect(result.message).toMatch(new RegExp(`v${STORAGE_VERSION + 1}`, "i"));
   });
 
   it("refuses malformed JSON with a clear message", () => {

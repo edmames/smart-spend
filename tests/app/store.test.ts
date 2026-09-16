@@ -7,7 +7,7 @@ import { createLocalStorageRepository } from "@/repository/repository";
 import { MemoryStorageAdapter } from "@/repository/storage";
 import { STORAGE_KEY } from "@/repository/storage-schema";
 import { buildExportPayload } from "@/app/backup";
-import { at, emptyData, makeTx, makeWallet } from "../fixtures";
+import { emptyData, makeTx, makeWallet, on } from "../fixtures";
 
 /**
  * Spec §30–§33 + §63–§66 — the store is the only bridge between UI and the
@@ -104,7 +104,7 @@ describe("write-through persistence", () => {
     const rejected = useSmartSpendStore.getState().createTransaction({
       type: "expense",
       amount: 999_999,
-      date: at(2026, 8, 1),
+      date: on(2026, 8, 1),
       sourceWalletId: "does-not-exist",
       categoryId: "makanan",
     });
@@ -139,10 +139,10 @@ describe("derived numbers are never stored", () => {
     const wallet = store.createWallet({ name: "BCA", type: "bank", openingBalance: 1_000_000 });
     if (!wallet.ok) throw new Error("wallet creation failed");
     const id = wallet.value!.id;
-    store.createTransaction({ type: "expense", amount: 100_000, date: at(2026, 8, 1), sourceWalletId: id, categoryId: "makanan" });
+    store.createTransaction({ type: "expense", amount: 100_000, date: on(2026, 8, 1), sourceWalletId: id, categoryId: "makanan" });
     store.createSavingsTarget({ name: "Dana Darurat", targetAmount: 5_000_000 });
     const targetId = useSmartSpendStore.getState().data.savingsTargets[0]!.id;
-    store.createTransaction({ type: "savings_deposit", amount: 200_000, date: at(2026, 8, 2), sourceWalletId: id, savingsTargetId: targetId });
+    store.createTransaction({ type: "savings_deposit", amount: 200_000, date: on(2026, 8, 2), sourceWalletId: id, savingsTargetId: targetId });
 
     const raw = JSON.parse(adapter.getItem(STORAGE_KEY) ?? "{}") as Record<string, unknown>;
     expect(JSON.stringify(raw)).not.toMatch(/"(balance|saved|savedAmount|currentAmount|totalMoney)"/);
@@ -184,7 +184,7 @@ describe("archive instead of destructive delete", () => {
     const result = useSmartSpendStore.getState().createTransaction({
       type: "expense",
       amount: 1_000,
-      date: at(2026, 8, 1),
+      date: on(2026, 8, 1),
       sourceWalletId: id,
       categoryId: "makanan",
     });

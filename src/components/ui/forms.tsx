@@ -173,14 +173,15 @@ export function AmountInput<T extends FieldValues>({
 /** A controlled calendar date: selected text is passed through unchanged. */
 export function CalendarDateInput<T extends FieldValues>({ control, name }: { control: Control<T>; name: Path<T> }) {
   const { field } = useController({ control, name });
+  const { value, onChange, onBlur, name: fieldName, ref } = field;
   return (
     <TextInput
       type="date"
-      value={typeof field.value === "string" ? field.value : ""}
-      onChange={(event) => field.onChange(event.target.value)}
-      onBlur={field.onBlur}
-      name={field.name}
-      ref={field.ref}
+      value={typeof value === "string" ? value : ""}
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={onBlur}
+      name={fieldName}
+      ref={ref}
       aria-label="Tanggal"
     />
   );

@@ -8,7 +8,8 @@ import {
 import { CORRUPT_BACKUP_PREFIX } from "@/repository/storage-schema";
 import { createLocalStorageRepository, dataIntegrityChecks } from "@/repository/repository";
 import { LocalStorageAdapter, MemoryStorageAdapter, StorageWriteError, type KeyValueStore } from "@/repository/storage";
-import { at, emptyData, makeTx, makeWallet } from "../fixtures";
+import { STORAGE_VERSION } from "@/repository/storage-schema";
+import { at, emptyData, makeTx, makeWallet, on } from "../fixtures";
 
 /**
  * Spec §30–§33 — the repository abstraction.
@@ -43,14 +44,14 @@ describe("save / load round trip", () => {
     const data: PersistedData = emptyData({
       wallets: [makeWallet("w1", { name: "BCA" })],
       transactions: [
-        makeTx({ id: "t1", type: "opening_balance", amount: 1_000_000, destinationWalletId: "w1", date: at(2026, 8, 1) }),
+        makeTx({ id: "t1", type: "opening_balance", amount: 1_000_000, destinationWalletId: "w1", date: on(2026, 8, 1) }),
         makeTx({
           id: "t2",
           type: "expense",
           amount: 125_000,
           sourceWalletId: "w1",
           categoryId: "makanan",
-          date: at(2026, 8, 2),
+          date: on(2026, 8, 2),
         }),
       ],
     });
@@ -62,7 +63,7 @@ describe("save / load round trip", () => {
     // what sits in the browser is plain JSON under one versioned key
     const raw = adapter.getItem(STORAGE_KEY);
     expect(raw).toBeTruthy();
-    expect(JSON.parse(raw ?? "{}")).toMatchObject({ version: 1 });
+    expect(JSON.parse(raw ?? "{}")).toMatchObject({ version: STORAGE_VERSION });
   });
 
   it("refuses to write data that does not match the schema (no partial state)", () => {
@@ -154,7 +155,7 @@ describe("corruption handling", () => {
           amount: 500_000,
           sourceWalletId: "w1",
           categoryId: "makanan",
-          date: at(2026, 8, 1),
+          date: on(2026, 8, 1),
         }),
       ],
     });

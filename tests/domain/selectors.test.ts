@@ -18,25 +18,25 @@ import {
   rangeForPeriod,
   shiftMonthKey,
 } from "@/domain/selectors";
-import { at, emptyData, makeBudget, makeTarget, makeTx, makeWallet } from "../fixtures";
+import { at, emptyData, makeBudget, makeTarget, makeTx, makeWallet, on } from "../fixtures";
 
 /**
  * Spec §57–§62 — reporting selectors (what every screen shows).
  */
 
 const budgetOnlyLedger = [
-  makeTx({ id: "e1", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 3) }),
-  makeTx({ id: "t1", type: "transfer", amount: 200_000, sourceWalletId: "w1", destinationWalletId: "w2", date: at(2026, 8, 4) }),
-  makeTx({ id: "d1", type: "savings_deposit", amount: 300_000, sourceWalletId: "w1", savingsTargetId: "s1", date: at(2026, 8, 5) }),
-  makeTx({ id: "w1x", type: "savings_withdrawal", amount: 50_000, destinationWalletId: "w1", savingsTargetId: "s1", date: at(2026, 8, 6) }),
-  makeTx({ id: "o1", type: "opening_balance", amount: 5_000_000, destinationWalletId: "w1", date: at(2026, 1, 1) }),
-  makeTx({ id: "i1", type: "income", amount: 500_000, destinationWalletId: "w1", categoryId: "gaji", date: at(2026, 8, 1) }),
+  makeTx({ id: "e1", type: "expense", amount: 100_000, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 8, 3) }),
+  makeTx({ id: "t1", type: "transfer", amount: 200_000, sourceWalletId: "w1", destinationWalletId: "w2", date: on(2026, 8, 4) }),
+  makeTx({ id: "d1", type: "savings_deposit", amount: 300_000, sourceWalletId: "w1", savingsTargetId: "s1", date: on(2026, 8, 5) }),
+  makeTx({ id: "w1x", type: "savings_withdrawal", amount: 50_000, destinationWalletId: "w1", savingsTargetId: "s1", date: on(2026, 8, 6) }),
+  makeTx({ id: "o1", type: "opening_balance", amount: 5_000_000, destinationWalletId: "w1", date: on(2026, 1, 1) }),
+  makeTx({ id: "i1", type: "income", amount: 500_000, destinationWalletId: "w1", categoryId: "gaji", date: on(2026, 8, 1) }),
 ];
 
 describe("month keys & labels", () => {
-  it("derives YYYY-MM from a timestamp", () => {
-    expect(monthKeyOf(at(2026, 8, 31, 23, 59))).toBe("2026-08");
-    expect(monthKeyOf(at(2026, 1, 1))).toBe("2026-01");
+  it("derives YYYY-MM from a calendar date", () => {
+    expect(monthKeyOf(on(2026, 8, 31))).toBe("2026-08");
+    expect(monthKeyOf(on(2026, 1, 1))).toBe("2026-01");
   });
 
   it("shifts across year boundaries", () => {
@@ -50,8 +50,10 @@ describe("month keys & labels", () => {
     expect(formatMonthLabel("2026-08")).toMatch(/Agustus|August/i);
   });
 
-  it("currentMonthKey follows the injected clock", () => {
-    expect(currentMonthKey(new Date(at(2026, 8, 15)))).toMatch(/^2026-0[89]$/);
+  it("currentMonthKey follows the injected clock in the Asia/Jakarta reference calendar", () => {
+    expect(currentMonthKey(new Date(at(2026, 8, 15)))).toBe("2026-08");
+    // 2026-08-31T18:00Z is already 2026-09-01 in Jakarta (UTC+7).
+    expect(currentMonthKey(new Date(at(2026, 8, 31, 18)))).toBe("2026-09");
   });
 });
 
@@ -105,8 +107,8 @@ describe("category aggregation", () => {
 
   it("groups records without a category under null", () => {
     const ledger = [
-      makeTx({ id: "x", type: "expense", amount: 5_000, sourceWalletId: "w1", date: at(2026, 8, 1) }),
-      makeTx({ id: "y", type: "expense", amount: 15_000, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 2) }),
+      makeTx({ id: "x", type: "expense", amount: 5_000, sourceWalletId: "w1", date: on(2026, 8, 1) }),
+      makeTx({ id: "y", type: "expense", amount: 15_000, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 8, 2) }),
     ];
     const breakdown = calculateCategoryBreakdown(ledger, { type: "expense" });
     expect(breakdown.map((entry) => entry.categoryId)).toEqual(["makanan", null]);
@@ -160,7 +162,7 @@ describe("budget usage", () => {
 describe("savings progress", () => {
   it("caps the bar at 100 while keeping the real percentage", () => {
     const ledger = [
-      makeTx({ id: "d", type: "savings_deposit", amount: 15_000_000, sourceWalletId: "w1", savingsTargetId: "s1", date: at(2026, 8, 1) }),
+      makeTx({ id: "d", type: "savings_deposit", amount: 15_000_000, sourceWalletId: "w1", savingsTargetId: "s1", date: on(2026, 8, 1) }),
     ];
     const progress = calculateSavingsProgress(makeTarget("s1", 10_000_000), ledger);
     expect(progress.saved).toBe(15_000_000);
@@ -195,21 +197,15 @@ describe("buildWalletRows", () => {
 });
 
 describe("period helpers & filters", () => {
-  it("rangeForPeriod covers whole months in the local calendar", () => {
-    const now = new Date(2026, 7, 15); // 15 August 2026, local
-    const thisMonth = rangeForPeriod("thisMonth", now);
-    expect(thisMonth.from.getDate()).toBe(1);
-    expect(thisMonth.from.getMonth()).toBe(7);
-    expect(thisMonth.to.getMonth()).toBe(7);
-    expect(thisMonth.to.getDate()).toBe(31);
-
-    const lastMonth = rangeForPeriod("lastMonth", now);
-    expect(lastMonth.from.getMonth()).toBe(6);
-    expect(lastMonth.to.getMonth()).toBe(6);
+  it("rangeForPeriod returns inclusive YYYY-MM-DD calendar bounds", () => {
+    const now = new Date(at(2026, 8, 15, 5)); // 12:00 in Jakarta on 15 August 2026
+    expect(rangeForPeriod("thisMonth", now)).toEqual({ from: "2026-08-01", to: "2026-08-31" });
+    expect(rangeForPeriod("lastMonth", now)).toEqual({ from: "2026-07-01", to: "2026-07-31" });
 
     const custom = rangeForPeriod({ from: "2026-08-03", to: "2026-08-04" }, now);
-    expect(inPeriod(at(2026, 8, 3), custom)).toBe(true);
-    expect(inPeriod(at(2026, 8, 2), custom)).toBe(false);
+    expect(custom).toEqual({ from: "2026-08-03", to: "2026-08-04" });
+    expect(inPeriod(on(2026, 8, 3), custom)).toBe(true);
+    expect(inPeriod(on(2026, 8, 2), custom)).toBe(false);
   });
 
   it("filterTransactions combines every facet", () => {
@@ -228,8 +224,8 @@ describe("period helpers & filters", () => {
 
   it("searches notes, category labels and wallet names", () => {
     const ledger = [
-      makeTx({ id: "a", type: "expense", amount: 12_000, sourceWalletId: "w1", categoryId: "makanan", note: "makan siang di kantin", date: at(2026, 8, 1) }),
-      makeTx({ id: "b", type: "expense", amount: 3_000, sourceWalletId: "w1", categoryId: "transportasi", note: null, date: at(2026, 8, 2) }),
+      makeTx({ id: "a", type: "expense", amount: 12_000, sourceWalletId: "w1", categoryId: "makanan", note: "makan siang di kantin", date: on(2026, 8, 1) }),
+      makeTx({ id: "b", type: "expense", amount: 3_000, sourceWalletId: "w1", categoryId: "transportasi", note: null, date: on(2026, 8, 2) }),
     ];
     const options = {
       walletNames: new Map([["w1", "Dompet Utama"]]),
@@ -244,8 +240,8 @@ describe("period helpers & filters", () => {
 
   it("returns results in the deterministic ledger order, newest day last", () => {
     const ledger = [
-      makeTx({ id: "z", type: "expense", amount: 1, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 9) }),
-      makeTx({ id: "y", type: "expense", amount: 1, sourceWalletId: "w1", categoryId: "makanan", date: at(2026, 8, 1) }),
+      makeTx({ id: "z", type: "expense", amount: 1, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 8, 9) }),
+      makeTx({ id: "y", type: "expense", amount: 1, sourceWalletId: "w1", categoryId: "makanan", date: on(2026, 8, 1) }),
     ];
     expect(filterTransactions(ledger, {}).map((t) => t.id)).toEqual(["y", "z"]);
   });

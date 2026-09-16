@@ -22,7 +22,7 @@ import {
   monthKeyOf,
 } from "@/domain/selectors";
 import { validateLedgerChronology } from "@/domain/validation";
-import { at, emptyData, makeBudget, makeTx, makeWallet } from "../fixtures";
+import { at, emptyData, makeBudget, makeTx, makeWallet, on } from "../fixtures";
 
 /**
  * FINANCIAL ACCEPTANCE SCENARIO (spec §46–§53).
@@ -36,7 +36,7 @@ import { at, emptyData, makeBudget, makeTx, makeWallet } from "../fixtures";
 // "now" must be later than every recorded date: SmartSpend refuses future-dated
 // records, so a fixture that records "tomorrow" is a bug in the fixture.
 const NOW = new Date(at(2026, 9, 1, 9, 0));
-const JAN = at(2026, 8, 15, 10);
+const AUG15 = on(2026, 8, 15);
 const BCA = "wallet-bca";
 const CASH = "wallet-cash";
 const DANA = "target-dana";
@@ -81,7 +81,7 @@ function buildScenario() {
     applyCreateTransaction(data, {
       type: "income",
       amount: 500_000,
-      date: JAN,
+      date: AUG15,
       categoryId: "gaji",
       destinationWalletId: BCA,
       paymentMethod: "transfer",
@@ -94,7 +94,7 @@ function buildScenario() {
     applyCreateTransaction(data, {
       type: "expense",
       amount: 100_000,
-      date: at(2026, 8, 15, 12),
+      date: AUG15,
       categoryId: "makanan",
       sourceWalletId: BCA,
       paymentMethod: "qris",
@@ -109,7 +109,7 @@ function buildScenario() {
     applyCreateTransaction(data, {
       type: "savings_deposit",
       amount: 300_000,
-      date: at(2026, 8, 16, 9),
+      date: on(2026, 8, 16),
       sourceWalletId: BCA,
       savingsTargetId: DANA,
       now: NOW,
@@ -120,7 +120,7 @@ function buildScenario() {
     applyCreateTransaction(data, {
       type: "transfer",
       amount: 200_000,
-      date: at(2026, 8, 17, 9),
+      date: on(2026, 8, 17),
       sourceWalletId: BCA,
       destinationWalletId: CASH,
       paymentMethod: "transfer",
@@ -132,7 +132,7 @@ function buildScenario() {
     applyCreateTransaction(data, {
       type: "savings_withdrawal",
       amount: 100_000,
-      date: at(2026, 8, 20, 9),
+      date: on(2026, 8, 20),
       destinationWalletId: BCA,
       savingsTargetId: DANA,
       now: NOW,
@@ -245,7 +245,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "expense",
         amount,
-        date: JAN,
+        date: AUG15,
         sourceWalletId: BCA,
         categoryId: "makanan",
         now: NOW,
@@ -267,7 +267,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "transfer",
         amount: 10_000,
-        date: JAN,
+        date: AUG15,
         sourceWalletId: BCA,
         destinationWalletId: BCA,
         now: NOW,
@@ -281,7 +281,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "expense",
         amount: 9_000_000,
-        date: at(2026, 8, 19, 9),
+        date: on(2026, 8, 19),
         sourceWalletId: BCA,
         now: NOW,
       }),
@@ -293,7 +293,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "savings_withdrawal",
         amount: 5_000_000,
-        date: at(2026, 8, 21, 9),
+        date: on(2026, 8, 21),
         destinationWalletId: BCA,
         savingsTargetId: DANA,
         now: NOW,
@@ -307,7 +307,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "savings_deposit",
         amount: 50_000_000,
-        date: at(2026, 8, 19, 9),
+        date: on(2026, 8, 19),
         sourceWalletId: BCA,
         savingsTargetId: DANA,
         now: NOW,
@@ -320,7 +320,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "expense",
         amount: 10_000,
-        date: JAN,
+        date: AUG15,
         sourceWalletId: "wallet-ghost",
         now: NOW,
       }),
@@ -329,7 +329,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "income",
         amount: 10_000,
-        date: JAN,
+        date: AUG15,
         destinationWalletId: BCA,
         categoryId: "category-ghost",
         now: NOW,
@@ -339,7 +339,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "savings_deposit",
         amount: 1_000,
-        date: JAN,
+        date: AUG15,
         sourceWalletId: BCA,
         savingsTargetId: "target-ghost",
         now: NOW,
@@ -352,7 +352,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "expense",
         amount: 10_000,
-        date: JAN,
+        date: AUG15,
         sourceWalletId: BCA,
         categoryId: "gaji",
         now: NOW,
@@ -364,7 +364,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "income",
         amount: 10_000,
-        date: JAN,
+        date: AUG15,
         destinationWalletId: BCA,
         categoryId: "makanan",
         now: NOW,
@@ -377,7 +377,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(data, {
         type: "expense",
         amount: 1_000,
-        date: at(2030, 1, 1),
+        date: on(2030, 1, 1),
         sourceWalletId: BCA,
         now: NOW,
       }),
@@ -409,7 +409,7 @@ describe("spec §43–45 — rejected mutations", () => {
       applyCreateTransaction(archived.ok ? archived.value : data, {
         type: "expense",
         amount: 1_000,
-        date: at(2026, 8, 22, 9),
+        date: on(2026, 8, 22),
         sourceWalletId: BCA,
         now: NOW,
       }),
@@ -418,7 +418,7 @@ describe("spec §43–45 — rejected mutations", () => {
 
   it("leaves the stored dataset untouched when a mutation is rejected", () => {
     const before = JSON.stringify(data);
-    reject(applyCreateTransaction(data, { type: "expense", amount: -1, date: JAN, sourceWalletId: BCA, now: NOW }));
+    reject(applyCreateTransaction(data, { type: "expense", amount: -1, date: AUG15, sourceWalletId: BCA, now: NOW }));
     expect(JSON.stringify(data)).toBe(before);
   });
 });
@@ -437,12 +437,12 @@ describe("spec §37–45 — historical (backdated) integrity", () => {
     // pin the opening record to Aug 1 (the wallet was created "now" = 2026-08-01)
     const data: AppData = {
       ...created.value,
-      transactions: created.value.transactions.map((t) => ({ ...t, date: at(2026, 8, 1) })),
+      transactions: created.value.transactions.map((t) => ({ ...t, date: on(2026, 8, 1) })),
     };
     const expense = applyCreateTransaction(data, {
       type: "expense",
       amount: 80_000,
-      date: at(2026, 8, 2),
+      date: on(2026, 8, 2),
       sourceWalletId: BCA,
       categoryId: "makanan",
       now: new Date(at(2026, 8, 2)),
@@ -497,7 +497,7 @@ describe("spec §37–45 — historical (backdated) integrity", () => {
     const result = applyUpdateTransaction(data, expense.id, {
       type: "expense",
       amount: 80_000,
-      date: at(2025, 12, 31), // a day earlier: balance was 0 then
+      date: on(2025, 12, 31), // a day earlier: balance was 0 then
       sourceWalletId: BCA,
       categoryId: "makanan",
       now: new Date(at(2026, 2, 1)),
@@ -511,7 +511,7 @@ describe("spec §37–45 — historical (backdated) integrity", () => {
     const result = applyUpdateTransaction(data, expense.id, {
       type: "expense",
       amount: 150_000,
-      date: at(2026, 8, 2),
+      date: on(2026, 8, 2),
       sourceWalletId: BCA,
       categoryId: "makanan",
       now: new Date(at(2026, 2, 1)),
@@ -524,14 +524,14 @@ describe("spec §37–45 — historical (backdated) integrity", () => {
     const extra = applyCreateTransaction(data, {
       type: "expense",
       amount: 5_000,
-      date: at(2026, 8, 3),
+      date: on(2026, 8, 3),
       sourceWalletId: BCA,
       categoryId: "transportasi",
       now: new Date(at(2026, 8, 3)),
     });
     expect(extra.ok).toBe(true);
     if (!extra.ok) return;
-    const toDelete = extra.value.transactions.find((t) => t.date === at(2026, 8, 3))!;
+    const toDelete = extra.value.transactions.find((t) => t.date === on(2026, 8, 3))!;
     const result = applyDeleteTransaction(extra.value, toDelete.id);
     expect(result.ok).toBe(true);
     if (result.ok) expect(calculateWalletBalance(result.value.transactions, BCA)).toBe(20_000);
@@ -543,8 +543,8 @@ describe("spec §37–45 — historical (backdated) integrity", () => {
       version: 1 as const,
       wallets: [makeWallet("w1", { name: "Cash", type: "cash" as const })],
       transactions: [
-        makeTx({ id: "t1", type: "income", amount: 10_000, destinationWalletId: "w1", date: at(2026, 3, 1) }),
-        makeTx({ id: "t2", type: "expense", amount: 25_000, sourceWalletId: "w1", date: at(2026, 3, 2) }),
+        makeTx({ id: "t1", type: "income", amount: 10_000, destinationWalletId: "w1", date: on(2026, 3, 1) }),
+        makeTx({ id: "t2", type: "expense", amount: 25_000, sourceWalletId: "w1", date: on(2026, 3, 2) }),
       ],
       savingsTargets: [],
       budgets: [],

@@ -33,9 +33,10 @@ export function tx(partial: Partial<Transaction> & Pick<Transaction, "id" | "typ
     savingsTargetId: null,
     paymentMethod: null,
     note: null,
-    date: "2026-01-01T08:00:00Z",
-    createdAt: "2026-01-01T08:00:00Z",
-    updatedAt: "2026-01-01T08:00:00Z",
+    // Financial calendar day (YYYY-MM-DD), not an instant.
+    date: "2026-01-01",
+    createdAt: "2026-01-01T08:00:00.000Z",
+    updatedAt: "2026-01-01T08:00:00.000Z",
     ...partial,
   } as Transaction;
 }
@@ -43,10 +44,10 @@ export function tx(partial: Partial<Transaction> & Pick<Transaction, "id" | "typ
 describe("sortTransactions (deterministic ordering, spec §23)", () => {
   it("orders by date, then createdAt, then id", () => {
     const ledger = [
-      tx({ id: "c", type: "expense", amount: 1, date: "2026-01-02T00:00:00Z" }),
-      tx({ id: "b", type: "expense", amount: 1, date: "2026-01-01T00:00:00Z", createdAt: "2026-01-05T00:00:00Z" }),
-      tx({ id: "a", type: "expense", amount: 1, date: "2026-01-01T00:00:00Z", createdAt: "2026-01-03T00:00:00Z" }),
-      tx({ id: "d", type: "expense", amount: 1, date: "2026-01-01T00:00:00Z", createdAt: "2026-01-03T00:00:00Z" }),
+      tx({ id: "c", type: "expense", amount: 1, date: "2026-01-02" }),
+      tx({ id: "b", type: "expense", amount: 1, date: "2026-01-01", createdAt: "2026-01-05T00:00:00.000Z" }),
+      tx({ id: "a", type: "expense", amount: 1, date: "2026-01-01", createdAt: "2026-01-03T00:00:00.000Z" }),
+      tx({ id: "d", type: "expense", amount: 1, date: "2026-01-01", createdAt: "2026-01-03T00:00:00.000Z" }),
     ];
     expect(sortTransactions(ledger).map((t) => t.id)).toEqual(["a", "d", "b", "c"]);
   });
@@ -122,27 +123,28 @@ describe("calculateSavingsBalance (spec §19)", () => {
 
 describe("point-in-time balances", () => {
   const ledger = [
-    tx({ id: "a", type: "opening_balance", amount: 100_000, destinationWalletId: "bca", date: "2026-01-01T00:00:00Z" }),
-    tx({ id: "b", type: "expense", amount: 80_000, sourceWalletId: "bca", date: "2026-01-02T00:00:00Z" }),
-    tx({ id: "c", type: "expense", amount: 5_000, sourceWalletId: "bca", date: "2026-01-03T00:00:00Z" }),
+    tx({ id: "a", type: "opening_balance", amount: 100_000, destinationWalletId: "bca", date: "2026-01-01" }),
+    tx({ id: "b", type: "expense", amount: 80_000, sourceWalletId: "bca", date: "2026-01-02" }),
+    tx({ id: "c", type: "expense", amount: 5_000, sourceWalletId: "bca", date: "2026-01-03" }),
   ];
 
   it("returns the balance immediately before a record", () => {
-    expect(getWalletBalanceAtDate(ledger, "bca", { id: "b", date: "2026-01-02T00:00:00Z" })).toBe(100_000);
-    expect(getWalletBalanceAtDate(ledger, "bca", { id: "c", date: "2026-01-03T00:00:00Z" })).toBe(20_000);
+    expect(getWalletBalanceAtDate(ledger, "bca", { id: "b", date: "2026-01-02" })).toBe(100_000);
+    expect(getWalletBalanceAtDate(ledger, "bca", { id: "c", date: "2026-01-03" })).toBe(20_000);
   });
 
-  it("filters by date when the record is not in the ledger", () => {
-    expect(getWalletBalanceAtDate(ledger, "bca", { id: "new", date: "2026-01-02T12:00:00Z" })).toBe(20_000);
+  it("filters by calendar day when the record is not in the ledger", () => {
+    // A record dated 2026-01-03 sees everything recorded before that day.
+    expect(getWalletBalanceAtDate(ledger, "bca", { id: "new", date: "2026-01-03" })).toBe(20_000);
     expect(getWalletBalanceAtDate(ledger, "bca")).toBe(15_000);
   });
 
   it("does the same for savings", () => {
     const savingsLedger = [
-      tx({ id: "d1", type: "savings_deposit", amount: 300_000, sourceWalletId: "bca", savingsTargetId: "dana", date: "2026-01-01T00:00:00Z" }),
-      tx({ id: "d2", type: "savings_withdrawal", amount: 100_000, destinationWalletId: "bca", savingsTargetId: "dana", date: "2026-01-05T00:00:00Z" }),
+      tx({ id: "d1", type: "savings_deposit", amount: 300_000, sourceWalletId: "bca", savingsTargetId: "dana", date: "2026-01-01" }),
+      tx({ id: "d2", type: "savings_withdrawal", amount: 100_000, destinationWalletId: "bca", savingsTargetId: "dana", date: "2026-01-05" }),
     ];
-    expect(getSavingsBalanceAtDate(savingsLedger, "dana", { id: "d2", date: "2026-01-05T00:00:00Z" })).toBe(300_000);
+    expect(getSavingsBalanceAtDate(savingsLedger, "dana", { id: "d2", date: "2026-01-05" })).toBe(300_000);
   });
 });
 
