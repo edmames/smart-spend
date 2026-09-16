@@ -2,16 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MoreHorizontal, PiggyBank, Plus, Receipt, Wallet } from "lucide-react";
+import { LayoutDashboard, MoreHorizontal, PiggyBank, Receipt, Wallet } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-/**
- * SmartSpend — primary navigation (exactly five items, per spec):
- *   Beranda · Transaksi · (+) · Dompet · Tabungan · Lainnya
- *
- * The centre action is a create shortcut, not a sixth tab: it routes to
- * /transactions/new. "Lainnya" is where Budget, Laporan and Pengaturan live.
- */
+/** Primary destinations. Transaction creation lives in the Transaksi page header. */
 
 export interface NavItem {
   label: string;
@@ -39,23 +33,11 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Navigasi utama"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/98 backdrop-blur"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto grid max-w-[43rem] grid-cols-5 items-stretch">
-        {NAV_ITEMS.slice(0, 2).map((item) => (
-          <NavLink key={item.href} item={item} active={item.match(pathname)} />
-        ))}
-        <div className="flex items-center justify-center">
-          <Link
-            href="/transactions/new"
-            aria-label="Tambah transaksi"
-            className="-mt-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand text-white shadow-md transition active:scale-95"
-          >
-            <Plus className="h-6 w-6" strokeWidth={2.4} />
-          </Link>
-        </div>
-        {NAV_ITEMS.slice(2).map((item) => (
+      <div className="mx-auto grid h-[var(--nav-height)] max-w-[43rem] grid-cols-5 items-stretch">
+        {NAV_ITEMS.map((item) => (
           <NavLink key={item.href} item={item} active={item.match(pathname)} />
         ))}
       </div>
@@ -70,12 +52,12 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-w-0 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-semibold transition",
+        "flex min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap px-0.5 text-[10px] font-semibold leading-tight transition-colors",
         active ? "text-brand" : "text-muted hover:text-ink",
       )}
     >
-      <Icon className="h-[19px] w-[19px]" strokeWidth={active ? 2.3 : 1.9} />
-      <span className="max-w-full truncate">{item.label}</span>
+      <Icon className="h-[19px] w-[19px] shrink-0" strokeWidth={active ? 2.3 : 1.9} aria-hidden />
+      <span>{item.label}</span>
     </Link>
   );
 }

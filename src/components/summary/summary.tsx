@@ -30,7 +30,7 @@ export function MonthPicker({
         type="button"
         aria-label="Bulan sebelumnya"
         onClick={() => onChange(shiftMonthKey(monthKey, -1))}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-black/5 hover:text-ink"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-ink"
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
@@ -43,7 +43,7 @@ export function MonthPicker({
         aria-label="Bulan berikutnya"
         disabled={nextDisabled}
         onClick={() => onChange(shiftMonthKey(monthKey, 1))}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-black/5 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
       >
         <ChevronRight className="h-4 w-4" />
       </button>
@@ -63,10 +63,9 @@ export function TotalMoneyCard({
   onboarding?: boolean;
 }) {
   return (
-    <Card as="section" className="relative overflow-hidden border-transparent bg-ink text-white">
-      <div aria-hidden className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-brand/40 blur-2xl" />
+    <Card as="section" className="border-transparent bg-[#173b3b] text-white">
       <p className="text-[12px] font-semibold uppercase tracking-wide text-white/70">Total uang Anda</p>
-      <p className="mt-1 text-[30px] font-extrabold leading-tight tabular">{formatIDR(total)}</p>
+      <p className="financial-display mt-1">{formatIDR(total)}</p>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-white/80">
         <span>
           Dompet <strong className="tabular text-white">{formatIDR(walletTotal)}</strong>

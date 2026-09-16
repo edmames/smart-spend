@@ -1,92 +1,146 @@
 @import "tailwindcss";
 
-/*
- * SmartSpend — Phase 1 tokens.
- *
- * Mobile first (375 / 390 / 430px). Deliberately small: premium visual polish is
- * Phase 2, but the palette, spacing and safe-area handling are set here so later
- * restyling never has to touch layout logic.
- */
-
-@theme {
-  --color-ink: #0f172a;
-  --color-muted: #64748b;
-  --color-line: #e2e8f0;
-  --color-surface: #ffffff;
-  --color-canvas: #f6f7fb;
-  --color-brand: #1d6ff2;
-  --color-brand-strong: #1758c4;
-  --color-brand-soft: #eaf1fe;
-  --color-income: #0f9d6f;
-  --color-income-soft: #e7f6ef;
-  --color-expense: #d43d51;
-  --color-expense-soft: #fdecef;
-  --color-savings: #7c4dff;
-  --color-savings-soft: #f0ecff;
-  --color-danger: #c92a2a;
-  --color-warning: #b7791f;
+/* Semantic colors are the source of truth for both themes. Existing utility names
+ * remain aliases so feature screens inherit the foundation without behavior edits. */
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ink: var(--foreground);
+  --color-line: var(--border);
+  --color-canvas: var(--background);
+  --color-brand: var(--primary);
+  --color-brand-strong: var(--primary-strong);
+  --color-brand-soft: var(--primary-soft);
+  --color-income: var(--income);
+  --color-income-soft: var(--income-soft);
+  --color-expense: var(--expense);
+  --color-expense-soft: var(--expense-soft);
+  --color-savings: var(--savings);
+  --color-savings-soft: var(--savings-soft);
+  --color-transfer: var(--transfer);
+  --color-transfer-soft: var(--transfer-soft);
+  --color-danger: var(--expense);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 :root {
-  --background: var(--color-canvas);
-  --foreground: var(--color-ink);
-  --nav-height: 62px;
+  color-scheme: light;
+  --background: #f5f7f6;
+  --surface: #ffffff;
+  --elevated: #edf3f1;
+  --foreground: #17282d;
+  --muted: #52666b;
+  --border: #d9e3e0;
+  --primary: #167e78;
+  --primary-strong: #0e6863;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e1f3ef;
+  --income: #08744f;
+  --income-soft: #e5f5ec;
+  --expense: #ad3c4c;
+  --expense-soft: #fcecef;
+  --savings: #6550a5;
+  --savings-soft: #f0edfa;
+  --transfer: #276d9b;
+  --transfer-soft: #e9f2f8;
+  --warning: #85550e;
+  --warning-soft: #fff4db;
+  --nav-height: 56px;
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
-}
-
-body {
-  background: var(--color-canvas);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  overscroll-behavior-y: none;
-}
-
-/* Nothing may create horizontal scroll on a phone. */
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-* {
-  min-width: 0;
-}
-
-.app-shell {
-  margin-inline: auto;
-  width: 100%;
-  max-width: 43rem;
-  min-height: 100dvh;
-  background: var(--color-canvas);
-}
-
-.app-content {
-  padding: 0.75rem 0.875rem calc(var(--nav-height) + 2rem + env(safe-area-inset-bottom));
-}
-
-@media (min-width: 768px) {
-  .app-content {
-    padding-inline: 1.25rem;
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #0e151b;
+    --surface: #172229;
+    --elevated: #1d2b32;
+    --foreground: #eff7f6;
+    --muted: #adc0c2;
+    --border: #31434a;
+    --primary: #4db6ac;
+    --primary-strong: #72d1c7;
+    --primary-foreground: #082824;
+    --primary-soft: #163e3c;
+    --income: #68d5a4;
+    --income-soft: #173b30;
+    --expense: #f18b99;
+    --expense-soft: #442830;
+    --savings: #bba6f3;
+    --savings-soft: #302847;
+    --transfer: #8cc8ea;
+    --transfer-soft: #203947;
+    --warning: #edc06d;
+    --warning-soft: #413521;
   }
 }
 
-.tabular {
-  font-variant-numeric: tabular-nums;
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0e151b;
+  --surface: #172229;
+  --elevated: #1d2b32;
+  --foreground: #eff7f6;
+  --muted: #adc0c2;
+  --border: #31434a;
+  --primary: #4db6ac;
+  --primary-strong: #72d1c7;
+  --primary-foreground: #082824;
+  --primary-soft: #163e3c;
+  --income: #68d5a4;
+  --income-soft: #173b30;
+  --expense: #f18b99;
+  --expense-soft: #442830;
+  --savings: #bba6f3;
+  --savings-soft: #302847;
+  --transfer: #8cc8ea;
+  --transfer-soft: #203947;
+  --warning: #edc06d;
+  --warning-soft: #413521;
 }
 
-button,
-a,
-input,
-select,
-textarea {
-  -webkit-tap-highlight-color: transparent;
+html { -webkit-text-size-adjust: 100%; }
+html, body { max-width: 100vw; overflow-x: clip; }
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overscroll-behavior-y: none;
+}
+* { min-width: 0; }
+
+.app-shell {
+  width: 100%;
+  max-width: 43rem;
+  min-height: 100dvh;
+  margin-inline: auto;
+  background: var(--background);
+}
+.app-content {
+  padding: calc(0.5rem + env(safe-area-inset-top)) 0.875rem calc(var(--nav-height) + env(safe-area-inset-bottom) + 1.25rem);
+}
+@media (min-width: 768px) {
+  .app-content { padding-inline: 1.25rem; }
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-brand);
-  outline-offset: 2px;
+.financial-display { font-size: clamp(1.55rem, 7vw, 1.9rem); font-weight: 750; line-height: 1.15; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+.page-title { font-size: 1.125rem; font-weight: 700; line-height: 1.3; letter-spacing: -0.02em; }
+.section-title { font-size: 0.8rem; font-weight: 700; line-height: 1.35; }
+.card-title { font-size: 0.925rem; font-weight: 700; line-height: 1.4; }
+.body-copy { font-size: 0.875rem; line-height: 1.5; }
+.metadata { font-size: 0.75rem; line-height: 1.4; color: var(--muted); }
+.field-label { font-size: 0.875rem; font-weight: 600; }
+.monetary-value, .tabular { font-variant-numeric: tabular-nums; }
+
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

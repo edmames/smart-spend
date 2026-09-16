@@ -23,7 +23,7 @@ export function HydrationGate({ children }: { children: React.ReactNode }) {
   if (failure) {
     return (
       <div className="flex flex-col gap-3">
-        <Card className="flex flex-col gap-2 border-warning/40 bg-amber-50">
+        <Card className="flex flex-col gap-2 border-warning/40 bg-warning-soft">
           <div className="flex items-center gap-2 text-warning">
             <AlertTriangle className="h-4 w-4" />
             <h2 className="text-[14px] font-bold">Data tersimpan tidak bisa dibaca</h2>

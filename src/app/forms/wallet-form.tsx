@@ -75,7 +75,7 @@ export function WalletForm({ mode, wallet }: { mode: "create" | "edit"; wallet?:
         <Field label="Nama dompet" error={form.formState.errors.name?.message} htmlFor="wallet-name">
           <input
             id="wallet-name"
-            className="w-full rounded-xl border border-line bg-white px-3 py-2.5 text-[15px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
             placeholder="cth: BCA, GoPay, Dompet"
             autoComplete="off"
             {...form.register("name")}

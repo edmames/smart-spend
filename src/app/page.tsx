@@ -26,15 +26,15 @@ export default function DashboardPage() {
 
 function DashboardHeader() {
   return (
-    <header className="mb-3 flex items-start justify-between gap-2 pt-1">
+    <header className="mb-3 flex min-h-11 items-center justify-between gap-2">
       <div>
         <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-brand">SmartSpend</p>
-        <h1 className="text-[21px] font-extrabold leading-tight text-ink">Ringkasan keuangan</h1>
+        <h1 className="page-title text-ink">Ringkasan keuangan</h1>
       </div>
       <Link
         href="/settings"
         aria-label="Pengaturan"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-surface text-muted hover:text-ink"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-muted hover:text-ink"
       >
         <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
           <circle cx="10" cy="10" r="2.6" />

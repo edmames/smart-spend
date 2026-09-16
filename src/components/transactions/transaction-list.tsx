@@ -189,7 +189,7 @@ export function TransactionFilterPanel({
             onChange={(event) => onChange({ ...filter, query: event.target.value })}
             placeholder="Cari catatan, kategori, dompet…"
             aria-label="Cari transaksi"
-            className="w-full rounded-xl border border-line bg-white py-2.5 pl-8 pr-8 text-[14px] outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            className="w-full rounded-xl border border-line bg-surface py-2.5 pl-8 pr-8 text-[14px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
           {filter.query ? (
             <button
@@ -206,7 +206,7 @@ export function TransactionFilterPanel({
           <Filter className="h-4 w-4" aria-hidden />
           <span>Filter</span>
           {active > 0 ? (
-            <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">
+            <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-primary-foreground">
               {active}
             </span>
           ) : null}
@@ -254,7 +254,7 @@ export function TransactionFilterPanel({
                   type="date"
                   value={filter.customFrom}
                   onChange={(event) => onChange({ ...filter, customFrom: event.target.value })}
-                  className="w-full rounded-xl border border-line bg-white px-2.5 py-2 text-[13px] font-normal text-ink outline-none focus:border-brand"
+                  className="w-full rounded-xl border border-line bg-surface px-2.5 py-2 text-[13px] font-normal text-ink outline-none focus:border-brand"
                 />
               </label>
               <label className="flex flex-col gap-1 text-[12px] font-semibold text-muted">
@@ -263,7 +263,7 @@ export function TransactionFilterPanel({
                   type="date"
                   value={filter.customTo}
                   onChange={(event) => onChange({ ...filter, customTo: event.target.value })}
-                  className="w-full rounded-xl border border-line bg-white px-2.5 py-2 text-[13px] font-normal text-ink outline-none focus:border-brand"
+                  className="w-full rounded-xl border border-line bg-surface px-2.5 py-2 text-[13px] font-normal text-ink outline-none focus:border-brand"
                 />
               </label>
             </div>

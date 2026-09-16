@@ -86,7 +86,7 @@ function TransactionDetail({ id }: { id: string }) {
         </dl>
 
         {archivedInvolved.length > 0 ? (
-          <p className="rounded-xl bg-amber-50 px-3 py-2 text-[12px] text-warning">
+          <p className="rounded-xl bg-warning-soft px-3 py-2 text-[12px] text-warning">
             Transaksi ini menyentuh dompet terarsip ({archivedInvolved.map((w) => w.name).join(", ")}). Saldo
             historisnya tetap dihitung seperti biasa.
           </p>

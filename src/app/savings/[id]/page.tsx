@@ -113,7 +113,7 @@ function SavingsDetail({ id }: { id: string }) {
             Target terarsip tidak bisa disetor/ditarik, tapi riwayat dan saldonya tetap dihitung.
           </p>
         ) : activeWallets.length === 0 ? (
-          <p className="rounded-xl bg-amber-50 px-3 py-2 text-[12px] text-warning">
+          <p className="rounded-xl bg-warning-soft px-3 py-2 text-[12px] text-warning">
             Butuh minimal satu dompet aktif untuk menyetor atau menarik.{" "}
             <LinkButton href="/wallets/new" size="sm" variant="secondary">
               Buat dompet

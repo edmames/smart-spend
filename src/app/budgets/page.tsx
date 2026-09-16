@@ -115,7 +115,7 @@ function BudgetsMonth() {
                       aria-label={`Ubah budget ${categoryLabel(usage.budget.categoryId)}`}
                       onClick={() => setEditingId(editingId === usage.budget.id ? null : usage.budget.id)}
                       className={cn(
-                        "inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted transition hover:bg-black/5 hover:text-ink",
+                        "inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted transition hover:bg-elevated hover:text-ink",
                         editingId === usage.budget.id && "bg-brand-soft text-brand-strong",
                       )}
                     >

@@ -7,24 +7,24 @@ import { cn } from "@/lib/cn";
 /**
  * SmartSpend — layout & surface primitives.
  *
- * `Page` owns the shell (header, scrollable content, bottom nav spacing) so every
- * route stays consistent and, importantly, never overflows at 375px.
+ * Shared presentation primitives. The root layout owns content width and fixed-nav
+ * clearance; these components keep feature pages visually consistent.
  */
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "soft";
 type Size = "sm" | "md" | "lg";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-brand text-white hover:bg-brand-strong active:bg-brand-strong shadow-sm",
-  secondary: "bg-white text-ink border border-line hover:border-brand/50 hover:text-brand",
+  primary: "bg-brand text-primary-foreground hover:bg-brand-strong active:bg-brand-strong",
+  secondary: "bg-surface text-ink border border-line hover:border-brand/50 hover:text-brand",
   soft: "bg-brand-soft text-brand-strong hover:bg-brand-soft/70",
-  ghost: "text-muted hover:text-ink hover:bg-black/5",
+  ghost: "text-muted hover:text-ink hover:bg-elevated",
   danger: "bg-expense text-white hover:bg-expense/90",
 };
 
 const SIZES: Record<Size, string> = {
-  sm: "h-8 px-2.5 text-[13px] rounded-lg gap-1.5",
-  md: "h-10 px-3.5 text-sm rounded-xl gap-2",
+  sm: "min-h-11 px-3 text-[13px] rounded-lg gap-1.5",
+  md: "min-h-11 px-3.5 text-sm rounded-xl gap-2",
   lg: "h-12 px-4 text-[15px] rounded-xl gap-2",
 };
 
@@ -80,7 +80,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-muted transition hover:border-brand/40 hover:text-brand",
+        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-muted transition hover:border-brand/40 hover:text-brand",
         className,
       )}
       {...props}
@@ -102,7 +102,7 @@ export function Card({
   padded?: boolean;
 }) {
   return (
-    <Tag className={cn("rounded-2xl border border-line bg-surface shadow-xs", padded && "p-3.5", className)}>
+    <Tag className={cn("rounded-xl border border-line bg-surface", padded && "p-3.5", className)}>
       {children}
     </Tag>
   );
@@ -119,7 +119,7 @@ export function SectionTitle({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 px-0.5">
-      <h2 id={id} className="text-[13px] font-bold uppercase tracking-wide text-muted">
+      <h2 id={id} className="section-title text-muted">
         {children}
       </h2>
       {action}
@@ -139,13 +139,13 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-20 -mx-3.5 mb-3 border-b border-line/70 bg-canvas/95 px-3.5 pb-3 pt-3 backdrop-blur">
-      <div className="flex items-start gap-2">
+    <header className="sticky top-[env(safe-area-inset-top)] z-20 -mx-3.5 mb-3 border-b border-line bg-canvas px-3.5 py-2">
+      <div className="flex min-h-11 items-center gap-2">
         {backHref ? (
           <Link
             href={backHref}
             aria-label="Kembali"
-            className="-ml-1 mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-black/5 hover:text-ink"
+            className="-ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-ink"
           >
             <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.7">
               <path d="M12 4l-5 6 5 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -153,7 +153,7 @@ export function PageHeader({
           </Link>
         ) : null}
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[19px] font-bold leading-tight text-ink">{title}</h1>
+          <h1 className="page-title truncate text-ink">{title}</h1>
           {subtitle ? <p className="mt-0.5 text-[13px] leading-snug text-muted">{subtitle}</p> : null}
         </div>
         {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
@@ -174,7 +174,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line bg-surface px-4 py-8 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line bg-surface px-4 py-7 text-center">
       {icon ? <div className="text-muted">{icon}</div> : null}
       <p className="text-[15px] font-semibold text-ink">{title}</p>
       {description ? <p className="max-w-[34ch] text-[13px] leading-relaxed text-muted">{description}</p> : null}
@@ -229,12 +229,12 @@ export function Badge({
   className?: string;
 }) {
   const tones = {
-    neutral: "bg-slate-100 text-slate-600",
+    neutral: "bg-elevated text-muted",
     income: "bg-income-soft text-income",
     expense: "bg-expense-soft text-expense",
     savings: "bg-savings-soft text-savings",
     brand: "bg-brand-soft text-brand-strong",
-    warning: "bg-amber-50 text-warning",
+    warning: "bg-warning-soft text-warning",
   } as const;
   return (
     <span
