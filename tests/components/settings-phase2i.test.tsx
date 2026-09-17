@@ -386,3 +386,34 @@ describe("Theme application utility", () => {
     expect(masked).not.toContain("12345678");
   });
 });
+
+
+describe("Settings About section cleanup", () => {
+  beforeEach(() => {
+    setMockRoute("/settings", "");
+    setData(realisticData());
+  });
+
+  it("does NOT contain raw STORAGE_KEY (developer info)", () => {
+    render(<SettingsPage />);
+    expect(screen.queryByText(/smarts-end\.v1/)).not.toBeInTheDocument();
+  });
+
+  it("does NOT contain manual storage check button", () => {
+    render(<SettingsPage />);
+    expect(screen.queryByRole("button", { name: /Cek ulang penyimpanan/i })).not.toBeInTheDocument();
+  });
+
+  it("does NOT contain diagnostic timestamps", () => {
+    render(<SettingsPage />);
+    expect(screen.queryByText(/Terakhir disimpan/i)).not.toBeInTheDocument();
+  });
+
+  it("does NOT contain wallet/transaction/savings/budget counts", () => {
+    render(<SettingsPage />);
+    expect(screen.queryByText(/Dompet:\s*\d+/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Transaksi:\s*\d+/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tabungan:\s*\d+/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Budget:\s*\d+/)).not.toBeInTheDocument();
+  });
+});

@@ -27,7 +27,7 @@ export default function ReportsPage() {
 
   return (
     <>
-      <PageHeader title="Laporan" subtitle="Ringkasan dan analisis keuangan" backHref="/more" />
+      <PageHeader title="Laporan" subtitle="Ringkasan dan analisis keuangan" backHref="/" />
       <div className="flex flex-col gap-3">
         <HydrationGate>
           <ReportsBody monthKey={monthKey} onChangeMonth={setMonthKey} />

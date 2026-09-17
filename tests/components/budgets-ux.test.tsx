@@ -502,14 +502,14 @@ describe("Budgets UX — Budget Detail View", () => {
     expect(screen.getByText("Budget tidak ditemukan")).toBeInTheDocument();
   });
 
-  it("preserves 5 bottom navigation tabs and highlights Budget for budget routes (Phase 2F)", () => {
+  it("preserves 5 bottom navigation tabs and highlights Budget for budget routes (Phase 2I)", () => {
     expect(NAV_ITEMS).toHaveLength(5);
     expect(NAV_ITEMS.map((item) => item.label)).toEqual([
       "Beranda",
       "Transaksi",
       "Dompet",
       "Budget",
-      "Lainnya",
+      "Pengaturan",
     ]);
 
     const budgetTab = NAV_ITEMS.find((item) => item.label === "Budget");
@@ -521,8 +521,10 @@ describe("Budgets UX — Budget Detail View", () => {
     expect(dompetTab?.match("/wallets")).toBe(true);
     expect(dompetTab?.match("/savings")).toBe(true);
 
-    const moreTab = NAV_ITEMS.find((item) => item.label === "Lainnya");
-    expect(moreTab?.match("/budgets")).toBe(false);
-    expect(moreTab?.match("/savings")).toBe(false);
+    const pengaturanTab = NAV_ITEMS.find((item) => item.label === "Pengaturan");
+    expect(pengaturanTab?.match("/budgets")).toBe(false);
+    expect(pengaturanTab?.match("/savings")).toBe(false);
+    expect(pengaturanTab?.match("/settings")).toBe(true);
+    expect(pengaturanTab?.match("/more")).toBe(true);
   });
 });

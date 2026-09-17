@@ -16,19 +16,14 @@ import type { PersistedData } from "@/repository/storage-schema";
 import { calculateSavingsBalance, calculateTotalMoney, calculateWalletBalance } from "@/domain/ledger";
 
 /**
- * Phase 2F — Navigation & Money Hub
+ * Phase 2I — Navigation: 5 items, Pengaturan replaces Lainnya.
  *
  * Covers:
- * - bottom nav exactly 5: Beranda, Transaksi, Dompet, Budget, Lainnya
+ * - bottom nav exactly 5: Beranda, Transaksi, Dompet, Budget, Pengaturan
  * - Tabungan absent from bottom nav, Budget present
  * - /wallets and /savings activate Dompet, /budgets activates Budget
- * - Money Hub segmented control [Dompet] [Tabungan]
- * - /wallets defaults to Dompet, /wallets?tab=savings opens Tabungan
- * - switching tabs updates visible content and URL via router.replace
- * - unknown tab falls back to Dompet
- * - /savings compatibility opens Tabungan
- * - Lainnya does not duplicate Budget/Tabungan as primary nav
- * - financial invariants remain intact
+ * - /settings activates Pengaturan
+ * - /more redirects/compatibly resolves to Settings
  */
 
 const replace = vi.fn();
@@ -92,9 +87,9 @@ describe("Bottom Nav Phase 2F", () => {
     setMockRoute("/wallets", "");
   });
 
-  it("is exactly five items in exact order: Beranda, Transaksi, Dompet, Budget, Lainnya", () => {
+  it("is exactly five items in exact order: Beranda, Transaksi, Dompet, Budget, Pengaturan", () => {
     expect(NAV_ITEMS).toHaveLength(5);
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Lainnya"]);
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Pengaturan"]);
   });
 
   it("Tabungan absent, Budget present", () => {
@@ -105,7 +100,7 @@ describe("Bottom Nav Phase 2F", () => {
   });
 
   it("correct hrefs", () => {
-    expect(NAV_ITEMS.map((i) => i.href)).toEqual(["/", "/transactions", "/wallets", "/budgets", "/more"]);
+    expect(NAV_ITEMS.map((i) => i.href)).toEqual(["/", "/transactions", "/wallets", "/budgets", "/settings"]);
   });
 
   it("/wallets activates Dompet", () => {
@@ -130,14 +125,13 @@ describe("Bottom Nav Phase 2F", () => {
     expect(budget.match("/budgets/123")).toBe(true);
   });
 
-  it("Lainnya does NOT activate for Budget or Savings", () => {
-    const lainnya = NAV_ITEMS.find((i) => i.label === "Lainnya")!;
-    expect(lainnya.match("/budgets")).toBe(false);
-    expect(lainnya.match("/savings")).toBe(false);
-    expect(lainnya.match("/wallets")).toBe(false);
-    expect(lainnya.match("/more")).toBe(true);
-    expect(lainnya.match("/reports")).toBe(true);
-    expect(lainnya.match("/settings")).toBe(true);
+  it("Pengaturan does NOT activate for Budget or Savings", () => {
+    const pengaturan = NAV_ITEMS.find((i) => i.label === "Pengaturan")!;
+    expect(pengaturan.match("/budgets")).toBe(false);
+    expect(pengaturan.match("/savings")).toBe(false);
+    expect(pengaturan.match("/wallets")).toBe(false);
+    expect(pengaturan.match("/more")).toBe(true);
+    expect(pengaturan.match("/settings")).toBe(true);
   });
 
   it("Beranda and Transaksi matching remain correct", () => {

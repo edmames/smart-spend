@@ -8,9 +8,10 @@ import { useDerived } from "@/app/derived";
 import { formatIDR } from "@/domain/money";
 
 /**
- * `/more` (\"Lainnya\") — the 5th primary tab.
- * Phase 2F: Dompet is Money Hub (Dompet | Tabungan), Budget is primary bottom nav.
- * Lainnya must NOT duplicate Budget or Tabungan as primary navigation destinations.
+ * `/more` — contextual hub, not a primary bottom nav tab.
+ * Phase 2I: Pengaturan is the 5th primary bottom nav tab.
+ * /more remains as a contextual hub for quick actions and external links.
+ * Must NOT duplicate Budget or Tabungan as primary navigation destinations.
  * Only Laporan, Pengaturan, and contextual quick actions remain.
  */
 export default function MorePage() {

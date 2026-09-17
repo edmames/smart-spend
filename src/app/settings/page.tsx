@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import type { ReactNode } from "react";
 import { ShieldCheck, Sun, Moon, Monitor } from "lucide-react";
-import { Button, Card, PageHeader, SectionTitle } from "@/components/ui/layout";
+import { Card, PageHeader, SectionTitle } from "@/components/ui/layout";
 import { HydrationGate } from "@/components/ui/hydration-gate";
 import { ExportCard, ImportCard, ResetCard } from "@/components/settings/data-cards";
 import { useSmartSpendStore } from "@/app/store";
-import { STORAGE_KEY } from "@/repository/storage-schema";
 import { appVersion } from "@/app/version";
 import { cn } from "@/lib/cn";
 import { applyTheme } from "@/lib/theme";
@@ -40,9 +38,6 @@ export default function SettingsPage() {
 function SettingsBody() {
   const data = useSmartSpendStore((state) => state.data);
   const updateSettings = useSmartSpendStore((state) => state.updateSettings);
-  const lastSavedAt = useSmartSpendStore((state) => state.lastSavedAt);
-  const reload = useSmartSpendStore((state) => state.reload);
-  const [probe, setProbe] = useState<string | null>(null);
 
   // Sync data-theme attribute whenever the theme preference changes.
   const settings = data.settings ?? {
@@ -58,13 +53,6 @@ function SettingsBody() {
       return false;
     }
   })();
-
-  const counts = [
-    { label: "Dompet", value: data.wallets.length },
-    { label: "Transaksi", value: data.transactions.length },
-    { label: "Tabungan", value: data.savingsTargets.length },
-    { label: "Budget", value: data.budgets.length },
-  ];
 
   return (
     <>
@@ -111,35 +99,6 @@ function SettingsBody() {
           </div>
         </div>
 
-        <ul className="flex flex-wrap gap-1.5">
-          {counts.map((entry) => (
-            <li key={entry.label} className="rounded-full bg-canvas px-2.5 py-1 text-[11.5px] text-muted">
-              <strong className="text-ink">{entry.value}</strong> {entry.label}
-            </li>
-          ))}
-        </ul>
-
-        <div className="flex flex-col gap-1 text-[12.5px] text-muted">
-          <span>
-            Kunci penyimpanan: <code className="rounded bg-elevated px-1 py-0.5 text-ink">{STORAGE_KEY}</code>
-          </span>
-          <span>
-            Terakhir disimpan:{" "}
-            {lastSavedAt ? new Date(lastSavedAt).toLocaleString("id-ID") : "belum ada perubahan"}
-          </span>
-        </div>
-
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => {
-            void reload();
-            setProbe("Data dibaca ulang dari penyimpanan browser.");
-          }}
-        >
-          Cek ulang penyimpanan
-        </Button>
-
         {!storageWorks ? (
           <p className="flex items-start gap-1.5 rounded-xl bg-expense-soft px-3 py-2 text-[12px] text-expense">
             Browser ini menolak penyimpanan lokal (mode privat?). Aplikasi tetap bisa dipakai, tapi data hilang
@@ -147,8 +106,6 @@ function SettingsBody() {
           </p>
         ) : null}
       </Card>
-
-      {probe ? <p className="text-[12px] font-medium text-income">{probe}</p> : null}
     </>
   );
 }

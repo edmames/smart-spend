@@ -96,7 +96,7 @@ Avoid decorative gradients, glassmorphism, 3D finance illustrations, excessive p
 
 ## Navigation
 
-Bottom navigation is exactly: Beranda, Transaksi, Dompet, Budget, Lainnya. Do not add a global center FAB, and do not change global navigation unless explicitly requested.
+Bottom navigation is exactly: Beranda, Transaksi, Dompet, Budget, Pengaturan. Do not add a global center FAB, and do not change global navigation unless explicitly requested.
 
 Phase 2F: Dompet is the unified Money Hub.
 
@@ -106,7 +106,7 @@ Phase 2F: Dompet is the unified Money Hub.
 - Wallets and savings remain separate domain concepts; consolidation is UI/navigation only
 - Wallet routes (/wallets, /wallets/*) and savings routes (/savings, /savings/*) both activate Dompet in bottom nav
 - Budget routes (/budgets, /budgets/*) activate Budget
-- Lainnya must not duplicate Budget or Tabungan as primary navigation destinations
+- Pengaturan activates Settings (/settings); /more remains as a contextual hub for quick actions
 - URL state uses standard Next.js App Router primitives (useRouter, useSearchParams, router.replace) — no manual history.replaceState/popstate unless required
 
 ## Accessibility

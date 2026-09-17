@@ -131,14 +131,14 @@ describe("Phase 2H categories UX and navigation", () => {
   beforeEach(() => setData());
 
   it("keeps bottom navigation unchanged at 5 items and /categories activates Transaksi tab", () => {
-    expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Lainnya"]);
+    expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Pengaturan"]);
     expect(NAV_ITEMS.some((item) => item.href === "/categories")).toBe(false);
     // /categories should match Transaksi tab (now includes /categories)
-    expect(NAV_ITEMS.find((item) => item.label === "Lainnya")?.match("/categories")).toBe(false);
+    expect(NAV_ITEMS.find((item) => item.label === "Pengaturan")?.match("/categories")).toBe(false);
     expect(NAV_ITEMS.find((item) => item.label === "Transaksi")?.match("/categories")).toBe(true);
   });
 
-  it("does NOT expose Kategori from Lainnya page", () => {
+  it("does NOT expose Kategori from Pengaturan page", () => {
     render(<MorePage />);
     // Verify no link to /categories exists (categories is now in Transaksi tab)
     const categoriesLink = screen.getAllByRole("link").find((link) => link.getAttribute("href") === "/categories");
