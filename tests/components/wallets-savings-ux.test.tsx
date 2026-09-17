@@ -25,13 +25,20 @@ import type { PersistedData } from "@/repository/storage-schema";
  */
 
 const push = vi.fn();
+const replace = vi.fn();
 const back = vi.fn();
 let routeId = "bca";
+let mockSearchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn(), back }),
+  useRouter: () => ({ push, replace, refresh: vi.fn(), back }),
   usePathname: () => "/wallets",
   useParams: () => ({ id: routeId }),
+  useSearchParams: () => ({
+    get: (key: string) => mockSearchParams.get(key),
+    toString: () => mockSearchParams.toString(),
+    has: (key: string) => mockSearchParams.has(key),
+  }),
 }));
 
 function setData(data: PersistedData) {
@@ -62,8 +69,10 @@ describe("Dompet (wallets) Phase 2D UX", () => {
   beforeEach(() => {
     setData(emptyData());
     push.mockClear();
+    replace.mockClear();
     back.mockClear();
     routeId = "bca";
+    mockSearchParams = new URLSearchParams();
   });
 
   it("onboards with a wallet-first empty state before any transaction can be recorded", () => {
@@ -226,7 +235,9 @@ describe("Tabungan (savings) Phase 2D UX", () => {
   beforeEach(() => {
     setData(emptyData());
     push.mockClear();
+    replace.mockClear();
     routeId = "liburan";
+    mockSearchParams = new URLSearchParams();
   });
 
   it("starts with a compact empty state and a goal-first action", () => {

@@ -26,6 +26,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/transactions",
   useParams: () => ({ id: "w1" }),
+  useSearchParams: () => ({ get: () => null, toString: () => "" }),
 }));
 
 function AmountHarness({ onSubmit, revision = 0 }: { onSubmit: (amount: number | null) => void; revision?: number }) {
@@ -302,12 +303,12 @@ describe("EmptyState", () => {
   });
 });
 
-describe("BottomNav", () => {
+describe("BottomNav Phase 2F", () => {
   it("renders exactly five labeled primary destinations without a global create shortcut", () => {
     render(<BottomNav />);
     const nav = screen.getByRole("navigation", { name: "Navigasi utama" });
     expect(nav).toBeInTheDocument();
-    expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Tabungan", "Lainnya"]);
+    expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Lainnya"]);
     for (const label of NAV_ITEMS.map((item) => item.label)) {
       expect(within(nav).getAllByText(label)).toHaveLength(1);
     }
@@ -315,10 +316,12 @@ describe("BottomNav", () => {
       "/",
       "/transactions",
       "/wallets",
-      "/savings",
+      "/budgets",
       "/more",
     ]);
     expect(within(nav).queryByRole("link", { name: "Tambah transaksi" })).not.toBeInTheDocument();
+    // Tabungan must not be standalone bottom nav
+    expect(within(nav).queryByText("Tabungan")).not.toBeInTheDocument();
   });
 });
 

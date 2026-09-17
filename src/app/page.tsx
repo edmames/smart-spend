@@ -119,7 +119,7 @@ function QuickActions() {
         <Wallet className="h-4 w-4" aria-hidden />
         Dompet
       </LinkButton>
-      <LinkButton href="/savings" size="sm" variant="secondary" className="min-h-11 gap-1.5">
+      <LinkButton href="/wallets?tab=savings" size="sm" variant="secondary" className="min-h-11 gap-1.5">
         <PiggyBank className="h-4 w-4" aria-hidden />
         Tabungan
       </LinkButton>
@@ -167,7 +167,7 @@ function SavingsPreview({ items }: { items: ReturnType<typeof useDerived>["savin
       <SectionTitle
         id="savings-preview-title"
         action={
-          <Link href="/savings" className="flex items-center gap-0.5 text-[12px] font-semibold text-brand hover:underline">
+          <Link href="/wallets?tab=savings" className="flex items-center gap-0.5 text-[12px] font-semibold text-brand hover:underline">
             Kelola
             <ArrowRight className="h-3 w-3" aria-hidden />
           </Link>

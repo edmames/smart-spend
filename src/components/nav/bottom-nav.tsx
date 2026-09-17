@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MoreHorizontal, PiggyBank, Receipt, Wallet } from "lucide-react";
+import { ChartPie, LayoutDashboard, MoreHorizontal, Receipt, Wallet } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /** Primary destinations. Transaction creation lives in the Transaksi page header. */
@@ -17,13 +17,18 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: "Beranda", href: "/", icon: LayoutDashboard, match: (p) => p === "/" },
   { label: "Transaksi", href: "/transactions", icon: Receipt, match: (p) => p.startsWith("/transactions") },
-  { label: "Dompet", href: "/wallets", icon: Wallet, match: (p) => p.startsWith("/wallets") },
-  { label: "Tabungan", href: "/savings", icon: PiggyBank, match: (p) => p.startsWith("/savings") },
+  {
+    label: "Dompet",
+    href: "/wallets",
+    icon: Wallet,
+    match: (p) => p.startsWith("/wallets") || p.startsWith("/savings"),
+  },
+  { label: "Budget", href: "/budgets", icon: ChartPie, match: (p) => p.startsWith("/budgets") },
   {
     label: "Lainnya",
     href: "/more",
     icon: MoreHorizontal,
-    match: (p) => p.startsWith("/more") || p.startsWith("/budgets") || p.startsWith("/reports") || p.startsWith("/settings"),
+    match: (p) => p.startsWith("/more") || p.startsWith("/reports") || p.startsWith("/settings"),
   },
 ];
 
