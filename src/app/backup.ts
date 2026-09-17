@@ -1,6 +1,7 @@
 import { validateLedgerChronology } from "@/domain/validation";
+import { calendarDateFromInstant } from "@/domain/calendar";
 import type { Budget, Category, SavingsTarget, Transaction, Wallet } from "@/domain/models";
-import { budgetKey } from "@/domain/models";
+import { budgetKey, DATE_TIME_SCHEMA } from "@/domain/models";
 import {
   createEmptyData,
   persistedDataSchema,
@@ -56,8 +57,9 @@ export function serializeExport(data: PersistedData, now: Date = new Date()): st
 }
 
 export function exportFileName(now: Date = new Date()): string {
-  const pad = (n: number) => `${n}`.padStart(2, "0");
-  return `smarts-export-${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}-${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}.json`;
+  // Financial calendar date uses the product reference timezone (Asia/Jakarta),
+  // never the UTC day — a UTC instant can push a Jakarta "today" into yesterday/tomorrow.
+  return `SmartSpend-backup-${calendarDateFromInstant(now)}.json`;
 }
 
 export interface DownloadArtifact {
@@ -79,16 +81,18 @@ export type ImportValidation =
   | { ok: true; data: PersistedData; preview: ImportPreview; warnings: string[] }
   | { ok: false; message: string; issues: ImportIssue[] };
 
-function previewOf(data: PersistedData): ImportPreview {
+function previewOf(data: PersistedData, exportedAt: string | null = null): ImportPreview {
   const months = new Set(data.budgets.map((budget) => budget.month));
   const dates = data.transactions.map((transaction) => transaction.date).sort();
   return {
     schemaVersion: data.version,
+    exportedAt,
     counts: {
       wallets: data.wallets.length,
       transactions: data.transactions.length,
       savingsTargets: data.savingsTargets.length,
       budgets: data.budgets.length,
+      categories: data.categories.length,
     },
     monthsWithBudgets: [...months].sort(),
     firstTransactionDate: dates[0] ?? null,
@@ -204,7 +208,12 @@ export function validateImportPayload(raw: unknown): ImportValidation {
   if (data.wallets.length === 0) warnings.push("File tidak berisi dompet sama sekali.");
   if (data.transactions.length === 0) warnings.push("File tidak berisi transaksi.");
 
-  return { ok: true, data, preview: previewOf(data), warnings };
+  const exportedAt =
+    typeof source.exportedAt === "string" && DATE_TIME_SCHEMA.safeParse(source.exportedAt).success
+      ? source.exportedAt
+      : null;
+
+  return { ok: true, data, preview: previewOf(data, exportedAt), warnings };
 }
 
 export function parseImportJson(text: string): ImportValidation {

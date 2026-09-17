@@ -172,8 +172,13 @@ describe("export payload (spec §63)", () => {
     expect(text).not.toMatch(/"saved"/);
   });
 
-  it("names the download file with the export date", () => {
-    expect(exportFileName(new Date(at(2026, 9, 1, 13, 5)))).toBe("smarts-export-20260901-1305.json");
+  it("names the download file with the export calendar date (Asia/Jakarta, not UTC)", () => {
+    // at(2026, 9, 1, 13, 5) == 2026-09-01T13:05:00Z == 2026-09-01T20:05:00+07 (Jakarta)
+    expect(exportFileName(new Date(at(2026, 9, 1, 13, 5)))).toBe("SmartSpend-backup-2026-09-01.json");
+    // A UTC instant near midnight that is still the same Jakarta day
+    expect(exportFileName(new Date(at(2026, 9, 1, 0, 5)))).toBe("SmartSpend-backup-2026-09-01.json");
+    // 17:00 UTC is the next calendar day in Jakarta
+    expect(exportFileName(new Date(at(2026, 9, 1, 17, 0)))).toBe("SmartSpend-backup-2026-09-02.json");
   });
 });
 
@@ -189,7 +194,7 @@ describe("import validation (spec §64–§65)", () => {
       expect(result.data.budgets).toEqual(data.budgets);
       expect(result.data.categories).toEqual(data.categories);
       expect(result.data.version).toBe(STORAGE_VERSION);
-      expect(result.preview.counts).toEqual({ wallets: 2, transactions: 3, savingsTargets: 1, budgets: 0 });
+      expect(result.preview.counts).toEqual({ wallets: 2, transactions: 3, savingsTargets: 1, budgets: 0, categories: data.categories.length });
       expect(result.preview.firstTransactionDate).toBeTruthy();
       expect(result.warnings).toEqual([]);
     }

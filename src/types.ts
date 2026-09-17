@@ -49,11 +49,13 @@ export interface ExportMeta {
 
 export interface ImportPreview {
   schemaVersion: number;
+  exportedAt: string | null;
   counts: {
     wallets: number;
     transactions: number;
     savingsTargets: number;
     budgets: number;
+    categories: number;
   };
   monthsWithBudgets: string[];
   firstTransactionDate: string | null;
