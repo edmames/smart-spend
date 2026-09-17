@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCalendarDate } from "@/domain/calendar";
+import { formatCalendarDate, calendarDateFromInstant } from "@/domain/calendar";
 
 import { useRef, useState } from "react";
 import { Download, RotateCcw, Upload } from "lucide-react";
@@ -162,14 +162,26 @@ export function ImportCard() {
 
       <ConfirmDialog
         open={pending !== null}
-        title="Ganti seluruh data dengan file ini?"
+        title="Pulihkan data dari cadangan?"
         description={
           <>
-            Data saat ini ({data.wallets.length} dompet, {data.transactions.length} transaksi) akan digantikan oleh{" "}
-            <strong>{pending?.filename}</strong>. Ekspor dulu kalau Anda ingin menyimpan kondisi sekarang.
+            <p className="text-[13px] leading-relaxed text-muted">
+              Memulihkan backup akan mengganti data SmartSpend yang tersimpan di perangkat ini.
+            </p>
+            <p className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+              Data saat ini ({data.wallets.length} dompet, {data.transactions.length} transaksi) akan digantikan
+              oleh <strong>{pending?.filename}</strong>. Ekspor dulu jika ingin menyimpan kondisi sekarang.
+            </p>
+            {pending?.validation.preview.exportedAt ? (
+              <p className="mt-1.5 text-[12.5px] text-muted">
+                Backup dibuat pada {formatCalendarDate(calendarDateFromInstant(new Date(pending.validation.preview.exportedAt)))}
+              </p>
+            ) : null}
           </>
         }
-        confirmLabel="Ya, ganti datanya"
+        confirmLabel="Pulihkan data"
+        cancelLabel="Batal"
+        tone="danger"
         onConfirm={confirm}
         onClose={() => setPending(null)}
       >
@@ -187,6 +199,10 @@ export function ImportCard() {
               <li className="flex justify-between">
                 <span className="text-muted">Target tabungan</span>
                 <strong className="text-ink">{pending.validation.preview.counts.savingsTargets}</strong>
+              </li>
+              <li className="flex justify-between">
+                <span className="text-muted">Kategori</span>
+                <strong className="text-ink">{pending.validation.preview.counts.categories}</strong>
               </li>
               <li className="flex justify-between">
                 <span className="text-muted">Budget</span>
@@ -228,8 +244,8 @@ export function ResetCard() {
       <div>
         <h2 className="text-[14.5px] font-bold text-ink">Hapus Semua Data</h2>
         <p className="text-[12.5px] leading-relaxed text-muted">
-          Menghapus seluruh dataset dari penyimpanan perangkat ini dan mengembalikan aplikasi ke kondisi kosong (0
-          dompet, 0 transaksi, 0 tabungan, 0 budget). Tidak bisa dibatalkan.
+          Menghapus seluruh data keuangan dari perangkat ini dan mengembalikan aplikasi ke kondisi kosong (0 dompet, 0
+          transaksi, 0 tabungan, 0 budget). Preferensi akan dikembalikan ke nilai awal. Tidak bisa dibatalkan.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
