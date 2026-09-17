@@ -140,14 +140,17 @@ describe("Phase 2H categories UX and navigation", () => {
 
   it("does NOT expose Kategori from Lainnya page", () => {
     render(<MorePage />);
-    expect(screen.queryByRole("link", { name: /Kategori/i })).toBeNull();
+    // Verify no link to /categories exists (categories is now in Transaksi tab)
+    const categoriesLink = screen.getAllByRole("link").find((link) => link.getAttribute("href") === "/categories");
+    expect(categoriesLink).toBeUndefined();
   });
 
   it("does NOT expose internal category IDs in the category list", () => {
     render(<CategoriesPage />);
     // Should show category label and type, but NOT "ID makanan" or similar
     expect(screen.getByText("Makanan")).toBeInTheDocument();
-    expect(screen.getByText("Pengeluaran")).toBeInTheDocument();
+    // "Pengeluaran" appears multiple times (type selector, category items)
+    expect(screen.getAllByText("Pengeluaran").length).toBeGreaterThan(0);
     // Ensure no ID text exists in the rendered output
     expect(screen.queryByText(/ID \w+/)).toBeNull();
   });
