@@ -159,25 +159,34 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="sticky top-[env(safe-area-inset-top)] z-20 -mx-3.5 mb-3 border-b border-line bg-canvas px-3.5 py-2">
-      <div className="flex min-h-11 items-center gap-2">
-        {backHref ? (
-          <Link
-            href={backHref}
-            aria-label="Kembali"
-            className="-ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-ink"
-          >
-            <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.7">
-              <path d="M12 4l-5 6 5 6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <h1 className="page-title truncate text-ink">{title}</h1>
-          {subtitle ? <p className="mt-0.5 text-[13px] leading-snug text-muted">{subtitle}</p> : null}
+    <header
+      className="sticky top-0 z-20 mb-3 border-b border-line bg-canvas py-2.5"
+      style={{
+        marginLeft: "calc(-0.875rem - env(safe-area-inset-left))",
+        marginRight: "calc(-0.875rem - env(safe-area-inset-right))",
+        paddingLeft: "calc(0.875rem + env(safe-area-inset-left))",
+        paddingRight: "calc(0.875rem + env(safe-area-inset-right))",
+        paddingTop: "calc(0.5rem + env(safe-area-inset-top))",
+      }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {backHref ? (
+            <Link
+              href={backHref}
+              aria-label="Kembali"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-ink -ml-1"
+            >
+              <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.7">
+                <path d="M12 4l-5 6 5 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          ) : null}
+          <h1 className="page-title min-w-0 flex-1 truncate text-ink">{title}</h1>
         </div>
         {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
       </div>
+      {subtitle ? <p className="mt-1.5 max-w-[60ch] text-[13px] leading-snug text-muted">{subtitle}</p> : null}
     </header>
   );
 }

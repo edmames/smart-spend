@@ -124,10 +124,16 @@ body {
   background: var(--background);
 }
 .app-content {
-  padding: calc(0.5rem + env(safe-area-inset-top)) 0.875rem calc(var(--nav-height) + env(safe-area-inset-bottom) + 1.25rem);
+  padding-top: calc(0.5rem + env(safe-area-inset-top));
+  padding-left: calc(0.875rem + env(safe-area-inset-left));
+  padding-right: calc(0.875rem + env(safe-area-inset-right));
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 1.25rem);
 }
 @media (min-width: 768px) {
-  .app-content { padding-inline: 1.25rem; }
+  .app-content {
+    padding-left: calc(1.25rem + env(safe-area-inset-left));
+    padding-right: calc(1.25rem + env(safe-area-inset-right));
+  }
 }
 
 .financial-display { font-size: clamp(1.55rem, 7vw, 1.9rem); font-weight: 750; line-height: 1.15; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
