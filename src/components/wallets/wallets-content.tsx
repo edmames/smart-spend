@@ -8,10 +8,12 @@ import { Badge, Button, Card, EmptyState, LinkButton, SectionTitle } from "@/com
 import { useSmartSpendStore } from "@/app/store";
 import { formatIDR } from "@/domain/money";
 import { calculateTotalMoney } from "@/domain/ledger";
+import { useHideBalances, maskMoney } from "@/components/settings/money-mask";
 
 export function WalletsContent() {
   const [showArchived, setShowArchived] = useState(false);
   const data = useSmartSpendStore((state) => state.data);
+  const hideBalances = useHideBalances();
   const active = data.wallets.filter((wallet) => wallet.archivedAt == null);
   const archived = data.wallets.filter((wallet) => wallet.archivedAt != null);
   const totals = calculateTotalMoney(data.wallets, data.savingsTargets, data.transactions);
@@ -37,9 +39,11 @@ export function WalletsContent() {
       <Card as="section" className="flex items-center justify-between gap-3 bg-brand-soft/60">
         <div>
           <p className="text-[11.5px] font-bold uppercase tracking-wide text-brand-strong">Total uang di dompet</p>
-          <p className="text-[22px] font-extrabold tabular text-ink">{formatIDR(totals.walletTotal)}</p>
+          <p className="text-[22px] font-extrabold tabular text-ink">
+            {hideBalances ? maskMoney() : formatIDR(totals.walletTotal)}
+          </p>
           <p className="text-[11.5px] text-muted">
-            Belum termasuk tabungan {formatIDR(totals.savingsTotal)} ·{" "}
+            Belum termasuk tabungan {hideBalances ? maskMoney() : formatIDR(totals.savingsTotal)} ·{" "}
             <Link href="/wallets?tab=savings" className="font-semibold text-brand hover:underline">
               lihat tabungan
             </Link>

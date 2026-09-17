@@ -31,6 +31,7 @@ import {
 import { createId } from "@/domain/id";
 import {
   DEFAULT_SETTINGS,
+  type AppSettings,
   type Budget,
   type Category,
   type NewBudget,
@@ -110,6 +111,7 @@ interface SmartSpendStore {
 
   importDataset: (raw: unknown) => MutationResult<AppData>;
   resetAllData: () => MutationResult<void>;
+  updateSettings: (patch: Partial<AppSettings>) => MutationResult<AppData>;
 }
 
 let activeRepository: SmartSpendRepository | null = null;
@@ -125,7 +127,7 @@ function repository(): SmartSpendRepository {
 }
 
 const EMPTY: AppData = {
-  version: 3,
+  version: 4,
   wallets: [],
   categories: seedDefaultCategories(),
   transactions: [],
@@ -381,6 +383,14 @@ export const useSmartSpendStore = create<SmartSpendStore>()((set, get) => {
         pushToast("Semua data di perangkat ini sudah dihapus.", "success");
       }
       return { ok: true, value: undefined };
+    },
+
+    updateSettings(patch) {
+      return commit((data) => {
+        const existing = data.settings ?? DEFAULT_SETTINGS;
+        const merged = { ...existing, ...patch };
+        return { ok: true, value: { ...data, settings: merged } };
+      });
     },
   };
 });

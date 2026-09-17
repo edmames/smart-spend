@@ -31,7 +31,7 @@ describe("persistedDataSchema (stored shape)", () => {
       savingsTargets: [makeTarget("s1")],
       budgets: [makeBudget("makanan", "2026-08", 1000000)],
       categories: seedDefaultCategories(),
-      settings: { currency: "IDR" },
+      settings: { currency: "IDR", theme: "system", firstTransactionType: "expense", hideBalances: false },
     };
     expect(persistedDataSchema.safeParse(payload).success).toBe(true);
   });
@@ -97,7 +97,7 @@ describe("migratePayload", () => {
     const result = migratePayload({ wallets: [], transactions: [] });
     expect(result).not.toBeNull();
     expect(result?.payload.version).toBe(STORAGE_VERSION);
-    expect(result?.applied.map((migration) => migration.to)).toEqual([1, 2, STORAGE_VERSION]);
+    expect(result?.applied.map((migration) => migration.to)).toEqual([1, 2, 3, STORAGE_VERSION]);
   });
 
   it("converts v1 transaction instants into Asia/Jakarta calendar days (v1 -> v2)", () => {
@@ -116,6 +116,7 @@ describe("migratePayload", () => {
     expect(migrated?.applied.map((migration) => migration.description)).toEqual([
       expect.stringMatching(/calendar dates/i),
       expect.stringMatching(/category records/i),
+      expect.stringMatching(/settings/i),
     ]);
   });
 
@@ -134,12 +135,11 @@ describe("migratePayload", () => {
       ],
       savingsTargets: [makeTarget("liburan", 5_000_000)],
       budgets: [makeBudget("makanan", "2026-09", 1_000_000, { id: "budget-food" })],
-      settings: { currency: "IDR" },
     };
 
     const migrated = migratePayload(legacyV2);
     expect(migrated).not.toBeNull();
-    expect(migrated?.applied.map((migration) => migration.to)).toEqual([STORAGE_VERSION]);
+    expect(migrated?.applied.map((migration) => migration.to)).toEqual([3, STORAGE_VERSION]);
     const parsed = parsePersistedData(migrated?.payload);
     if (!parsed.ok) throw new Error(JSON.stringify(parsed.failure.issues));
 
@@ -256,7 +256,7 @@ describe("parsePersistedJson (corruption handling)", () => {
       ],
       savingsTargets: [makeTarget("s1", 5000000)],
       budgets: [makeBudget("makanan", "2026-08", 1000000)],
-      settings: { currency: "IDR" },
+      settings: { currency: "IDR", theme: "system", firstTransactionType: "income", hideBalances: false },
     });
     const text = serializePersistedData(data, at(2026, 9, 1));
     // The downloaded export (with appName/schemaVersion/exportedAt) must be

@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ArrowDown, ArrowUp, CalendarDays, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Eye, EyeOff, Info } from "lucide-react";
 import { Card } from "@/components/ui/layout";
 import { cn } from "@/lib/cn";
 import { formatIDR } from "@/domain/money";
 import { type CategoryMeta } from "@/domain/categories";
 import { useSmartSpendStore } from "@/app/store";
+import { maskMoney, useHideBalances } from "@/components/settings/money-mask";
 import { CHART_COLORS } from "@/components/ui/theme";
 import { formatMonthLabel, monthInputValueFor, shiftMonthKey } from "@/app/forms/month";
 import type { MonthlySummary } from "@/domain/selectors";
@@ -62,20 +63,46 @@ export function TotalMoneyCard({
   walletTotal: number;
   savingsTotal: number;
 }) {
+  const hideBalances = useHideBalances();
+  const updateSettings = useSmartSpendStore((state) => state.updateSettings);
+
+  const EyeIcon = hideBalances ? EyeOff : Eye;
+  const eyeLabel = hideBalances ? "Tampilkan nominal" : "Sembunyikan nominal";
+
   return (
     <section className="total-money-hero overflow-hidden rounded-xl border">
       <div className="px-4 pb-3.5 pt-4">
-        <p className="total-money-hero__eyebrow text-[11px] font-bold uppercase tracking-[0.08em]">Total uang Anda</p>
-        <p className="financial-display total-money-hero__amount mt-1 text-[2rem]">{formatIDR(total)}</p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="total-money-hero__eyebrow text-[11px] font-bold uppercase tracking-[0.08em]">Total uang Anda</p>
+          <button
+            type="button"
+            aria-label={eyeLabel}
+            title={eyeLabel}
+            onClick={() => updateSettings({ hideBalances: !hideBalances })}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-surface/60 text-muted transition hover:border-brand/40 hover:text-brand"
+          >
+            <EyeIcon className="h-[18px] w-[18px]" aria-hidden />
+          </button>
+        </div>
+        <p
+          className="financial-display total-money-hero__amount mt-1 text-[2rem]"
+          aria-label={hideBalances ? "Jumlah total tersembunyi" : undefined}
+        >
+          {hideBalances ? maskMoney() : formatIDR(total)}
+        </p>
       </div>
       <div className="total-money-hero__breakdown grid grid-cols-2 border-t">
         <div className="px-4 py-2.5">
           <p className="total-money-hero__label text-[11px] font-semibold">Dompet</p>
-          <p className="total-money-hero__value mt-0.5 text-[13.5px] font-bold tabular">{formatIDR(walletTotal)}</p>
+          <p className="total-money-hero__value mt-0.5 text-[13.5px] font-bold tabular">
+            {hideBalances ? maskMoney() : formatIDR(walletTotal)}
+          </p>
         </div>
         <div className="total-money-hero__split border-l px-4 py-2.5">
           <p className="total-money-hero__label text-[11px] font-semibold">Tabungan</p>
-          <p className="total-money-hero__value mt-0.5 text-[13.5px] font-bold tabular">{formatIDR(savingsTotal)}</p>
+          <p className="total-money-hero__value mt-0.5 text-[13.5px] font-bold tabular">
+            {hideBalances ? maskMoney() : formatIDR(savingsTotal)}
+          </p>
         </div>
       </div>
     </section>
@@ -83,13 +110,16 @@ export function TotalMoneyCard({
 }
 
 export function CashFlowCard({ summary }: { summary: MonthlySummary }) {
+  const hideBalances = useHideBalances();
   const netTone = summary.netCashFlow >= 0 ? "text-income" : "text-expense";
 
   return (
     <Card as="section" className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted">Bulan ini</h2>
-        <p className={cn("text-[14px] font-extrabold tabular", netTone)}>Net {formatIDR(summary.netCashFlow)}</p>
+        <p className={cn("text-[14px] font-extrabold tabular", netTone)}>
+          {hideBalances ? maskMoney() : `Net ${formatIDR(summary.netCashFlow)}`}
+        </p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <figure className="rounded-lg bg-income-soft px-3 py-2.5">
@@ -97,7 +127,9 @@ export function CashFlowCard({ summary }: { summary: MonthlySummary }) {
             <ArrowDown className="h-3.5 w-3.5" aria-hidden />
             Pemasukan
           </figcaption>
-          <p className="mt-0.5 text-[17px] font-extrabold tabular text-income">{formatIDR(summary.income)}</p>
+          <p className="mt-0.5 text-[17px] font-extrabold tabular text-income">
+            {hideBalances ? maskMoney() : formatIDR(summary.income)}
+          </p>
           <p className="text-[11px] text-muted">{summary.incomeCount} transaksi</p>
         </figure>
         <figure className="rounded-lg bg-expense-soft px-3 py-2.5">
@@ -105,7 +137,9 @@ export function CashFlowCard({ summary }: { summary: MonthlySummary }) {
             <ArrowUp className="h-3.5 w-3.5" aria-hidden />
             Pengeluaran
           </figcaption>
-          <p className="mt-0.5 text-[17px] font-extrabold tabular text-expense">{formatIDR(summary.expense)}</p>
+          <p className="mt-0.5 text-[17px] font-extrabold tabular text-expense">
+            {hideBalances ? maskMoney() : formatIDR(summary.expense)}
+          </p>
           <p className="text-[11px] text-muted">{summary.expenseCount} transaksi</p>
         </figure>
       </div>
@@ -113,6 +147,13 @@ export function CashFlowCard({ summary }: { summary: MonthlySummary }) {
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
         Hanya pemasukan dan pengeluaran nyata; transfer, tabungan, dan saldo awal dikecualikan.
       </p>
+      <Link
+        href="/reports"
+        className="flex items-center gap-0.5 self-start text-[12px] font-semibold text-brand hover:underline"
+      >
+        Lihat laporan
+        <ArrowRight className="h-3 w-3" aria-hidden />
+      </Link>
     </Card>
   );
 }

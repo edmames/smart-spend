@@ -34,7 +34,7 @@ export default function CategoriesPage() {
       <PageHeader
         title="Kategori"
         subtitle="Kelola kategori transaksi. Arsip tidak mengubah riwayat, budget, atau laporan lama."
-        backHref="/more"
+        backHref="/transactions"
         actions={
           <Button size="sm" onClick={() => { setCreating(true); setEditing(null); }}>
             <Plus className="h-4 w-4" aria-hidden />

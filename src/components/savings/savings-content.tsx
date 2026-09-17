@@ -9,10 +9,12 @@ import { useSmartSpendStore } from "@/app/store";
 import { formatIDR } from "@/domain/money";
 import { calculateSavingsBalance } from "@/domain/ledger";
 import { calculateSavingsProgress } from "@/domain/selectors";
+import { useHideBalances, maskMoney } from "@/components/settings/money-mask";
 
 export function SavingsContent() {
   const [showArchived, setShowArchived] = useState(false);
   const data = useSmartSpendStore((state) => state.data);
+  const hideBalances = useHideBalances();
   const active = data.savingsTargets.filter((target) => target.archivedAt == null);
   const archived = data.savingsTargets.filter((target) => target.archivedAt != null);
   const totalSaved = active.reduce((sum, target) => sum + calculateSavingsBalance(data.transactions, target.id), 0);
@@ -39,7 +41,9 @@ export function SavingsContent() {
       <Card as="section" className="flex items-center justify-between gap-3 bg-savings-soft">
         <div>
           <p className="text-[11.5px] font-bold uppercase tracking-wide text-savings">Total tersimpan (target aktif)</p>
-          <p className="text-[22px] font-extrabold tabular text-ink">{formatIDR(totalSaved)}</p>
+          <p className="text-[22px] font-extrabold tabular text-ink">
+            {hideBalances ? maskMoney() : formatIDR(totalSaved)}
+          </p>
           <p className="text-[11.5px] text-muted">
             <Link href="/wallets" className="font-semibold text-brand hover:underline">
               Uang ini sudah diperhitungkan

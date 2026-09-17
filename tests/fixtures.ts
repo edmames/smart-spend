@@ -94,7 +94,7 @@ export function makeTx(overrides: TxOverrides = {}): Transaction {
 /** Empty, valid dataset (spec §27: the app starts empty, never with demo data). */
 export function emptyData(overrides: Partial<PersistedData> = {}): PersistedData {
   return {
-    version: 3,
+    version: 4,
     wallets: [],
     categories: seedDefaultCategories(),
     transactions: [],

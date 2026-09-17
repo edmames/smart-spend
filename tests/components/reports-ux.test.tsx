@@ -523,23 +523,24 @@ describe("Reports UI — Navigation", () => {
     expect(screen.getByText(/Ringkasan dan analisis keuangan/)).toBeInTheDocument();
   });
 
-  it("Reports remains under Lainnya and bottom nav remains exactly 5", () => {
+  it("Reports is contextual from Dashboard, not in bottom nav", () => {
     expect(NAV_ITEMS).toHaveLength(5);
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Lainnya"]);
-    const lainnya = NAV_ITEMS.find((i) => i.label === "Lainnya")!;
-    expect(lainnya.match("/reports")).toBe(true);
-    expect(lainnya.match("/reports/new")).toBe(true); // Lainnya matches /reports prefix
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Pengaturan"]);
     // Reports is NOT in bottom nav
     expect(NAV_ITEMS.map((i) => i.label)).not.toContain("Laporan");
   });
 
-  it("bottom nav active behavior for /reports is Lainnya", () => {
-    const lainnya = NAV_ITEMS.find((i) => i.label === "Lainnya")!;
-    expect(lainnya.match("/reports")).toBe(true);
-    const dompet = NAV_ITEMS.find((i) => i.label === "Dompet")!;
-    expect(dompet.match("/reports")).toBe(false);
-    const budget = NAV_ITEMS.find((i) => i.label === "Budget")!;
-    expect(budget.match("/reports")).toBe(false);
+  it("Reports back link points to / (Beranda context)", () => {
+    render(<ReportsPage />);
+    const backLink = screen.queryByRole("link", { name: /kembali/i });
+    expect(backLink).not.toBeNull();
+    expect(backLink?.getAttribute("href")).toBe("/");
+  });
+
+  it("Dashboard CashFlowCard has Lihat laporan link to /reports", () => {
+    // This is tested separately in settings-phase2i.test.tsx
+    // Reports page backHref is / (Beranda context)
+    // Bottom nav no longer includes a Lainnya item
   });
 });
 

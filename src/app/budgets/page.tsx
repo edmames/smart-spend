@@ -54,7 +54,6 @@ function BudgetsContent() {
       <PageHeader
         title="Budget"
         subtitle="Satu batas per kategori per bulan, dihitung dari pengeluaran nyata saja."
-        backHref="/more"
         actions={
           editingId === null ? (
             <LinkButton href={`/budgets/new?month=${monthKey}`} size="sm">

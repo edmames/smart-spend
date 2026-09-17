@@ -303,12 +303,12 @@ describe("EmptyState", () => {
   });
 });
 
-describe("BottomNav Phase 2F", () => {
+describe("BottomNav Phase 2I", () => {
   it("renders exactly five labeled primary destinations without a global create shortcut", () => {
     render(<BottomNav />);
     const nav = screen.getByRole("navigation", { name: "Navigasi utama" });
     expect(nav).toBeInTheDocument();
-    expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Lainnya"]);
+    expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Pengaturan"]);
     for (const label of NAV_ITEMS.map((item) => item.label)) {
       expect(within(nav).getAllByText(label)).toHaveLength(1);
     }
@@ -317,7 +317,7 @@ describe("BottomNav Phase 2F", () => {
       "/transactions",
       "/wallets",
       "/budgets",
-      "/more",
+      "/settings",
     ]);
     expect(within(nav).queryByRole("link", { name: "Tambah transaksi" })).not.toBeInTheDocument();
     // Tabungan must not be standalone bottom nav
