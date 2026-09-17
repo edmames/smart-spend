@@ -1,52 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  ChartPie,
-  Download,
-  PiggyBank,
-  Plus,
-  Receipt,
-  Settings,
-  Wallet,
-  Wallet2,
-} from "lucide-react";
+import { ArrowRight, Download, PiggyBank, Plus, Receipt, Settings, Wallet } from "lucide-react";
 import { Badge, Card, LinkButton, PageHeader, SectionTitle } from "@/components/ui/layout";
 import { HydrationGate } from "@/components/ui/hydration-gate";
 import { useDerived } from "@/app/derived";
 import { formatIDR } from "@/domain/money";
 
 /**
- * `/more` ("Lainnya") — the 5th primary tab. Budget, Laporan and Pengaturan live
- * here so the primary navigation stays exactly five items.
+ * `/more` (\"Lainnya\") — the 5th primary tab.
+ * Phase 2F: Dompet is Money Hub (Dompet | Tabungan), Budget is primary bottom nav.
+ * Lainnya must NOT duplicate Budget or Tabungan as primary navigation destinations.
+ * Only Laporan, Pengaturan, and contextual quick actions remain.
  */
 export default function MorePage() {
   const derived = useDerived();
 
   return (
     <>
-      <PageHeader title="Lainnya" subtitle="Budget, laporan, dan pengaturan data." />
+      <PageHeader title="Lainnya" subtitle="Laporan, pengaturan, dan aksi cepat." />
 
       <div className="flex flex-col gap-3">
         <HydrationGate>
           <SectionTitle>Utama</SectionTitle>
           <Card as="section" padded={false} className="divide-y divide-line/70 px-3">
-            <MoreRow href="/budgets" icon={<ChartPie className="h-[18px] w-[18px]" aria-hidden />} label="Budget" hint="Batas pengeluaran per kategori & bulan">
-              <Badge tone="neutral">{derived.budgetUsages.length}</Badge>
-            </MoreRow>
-            <MoreRow href="/reports" icon={<Receipt className="h-[18px] w-[18px]" aria-hidden />} label="Laporan" hint="Ringkasan bulanan & rincian kategori" />
-            <MoreRow href="/settings" icon={<Settings className="h-[18px] w-[18px]" aria-hidden />} label="Pengaturan" hint="Penyimpanan, ekspor, impor, reset" />
+            <MoreRow
+              href="/reports"
+              icon={<Receipt className="h-[18px] w-[18px]" aria-hidden />}
+              label="Laporan"
+              hint="Ringkasan bulanan & rincian kategori"
+            />
+            <MoreRow
+              href="/settings"
+              icon={<Settings className="h-[18px] w-[18px]" aria-hidden />}
+              label="Pengaturan"
+              hint="Penyimpanan, ekspor, impor, reset"
+            />
           </Card>
 
           <SectionTitle>Pencatatan cepat</SectionTitle>
           <Card as="section" padded={false} className="divide-y divide-line/70 px-3">
-            <MoreRow href="/transactions/new" icon={<Plus className="h-[18px] w-[18px]" aria-hidden />} label="Catat transaksi" hint="Masuk, keluar, transfer, tabungan" />
-            <MoreRow href="/transactions" icon={<Receipt className="h-[18px] w-[18px]" aria-hidden />} label="Riwayat & filter" hint="Cari, saring per periode" >
+            <MoreRow
+              href="/transactions/new"
+              icon={<Plus className="h-[18px] w-[18px]" aria-hidden />}
+              label="Catat transaksi"
+              hint="Masuk, keluar, transfer, tabungan"
+            />
+            <MoreRow
+              href="/transactions"
+              icon={<Receipt className="h-[18px] w-[18px]" aria-hidden />}
+              label="Riwayat & filter"
+              hint="Cari, saring per periode"
+            >
               <Badge tone="neutral">{derived.counts.transactions}</Badge>
             </MoreRow>
-            <MoreRow href="/wallets/new" icon={<Wallet className="h-[18px] w-[18px]" aria-hidden />} label="Tambah dompet" hint="Tunai, bank, atau e-wallet" />
-            <MoreRow href="/savings/new" icon={<PiggyBank className="h-[18px] w-[18px]" aria-hidden />} label="Tambah target tabungan" hint="Setoran & penarikan tercatat" />
+            <MoreRow
+              href="/wallets/new"
+              icon={<Wallet className="h-[18px] w-[18px]" aria-hidden />}
+              label="Tambah dompet"
+              hint="Tunai, bank, atau e-wallet"
+            />
+            <MoreRow
+              href="/savings/new"
+              icon={<PiggyBank className="h-[18px] w-[18px]" aria-hidden />}
+              label="Tambah target tabungan"
+              hint="Setoran & penarikan tercatat"
+            />
           </Card>
 
           <SectionTitle>Data</SectionTitle>
@@ -67,13 +86,6 @@ export default function MorePage() {
             <p className="text-[11.5px] leading-relaxed text-muted">
               Data saat ini tersimpan di browser/perangkat ini dan belum tersinkron antarperangkat.
             </p>
-          </Card>
-
-          <SectionTitle>Navigasi</SectionTitle>
-          <Card as="section" padded={false} className="divide-y divide-line/70 px-3">
-            <MoreRow href="/" icon={<Wallet2 className="h-[18px] w-[18px]" aria-hidden />} label="Beranda" hint="Total uang & ringkasan bulan ini" />
-            <MoreRow href="/wallets" icon={<Wallet className="h-[18px] w-[18px]" aria-hidden />} label="Dompet" hint={`${derived.counts.wallets} dompet tercatat`} />
-            <MoreRow href="/savings" icon={<PiggyBank className="h-[18px] w-[18px]" aria-hidden />} label="Tabungan" hint={`${derived.counts.savings} target tercatat`} />
           </Card>
         </HydrationGate>
       </div>
