@@ -2,19 +2,23 @@
 
 import { create } from "zustand";
 import {
+  applyArchiveCategory,
   applyArchiveSavingsTarget,
   applyArchiveWallet,
   applyCreateBudget,
+  applyCreateCategory,
   applyCreateSavingsTarget,
   applyCreateTransaction,
   applyCreateWallet,
   applyDeleteBudget,
   applyDeleteTransaction,
   applyDeleteWallet,
+  applyRestoreCategory,
   applyRestoreSavingsTarget,
   applyRestoreWallet,
   applyReset,
   applyUpdateBudget,
+  applyUpdateCategory,
   applyUpdateSavingsTarget,
   applyUpdateTransaction,
   applyUpdateWallet,
@@ -28,6 +32,7 @@ import { createId } from "@/domain/id";
 import {
   DEFAULT_SETTINGS,
   type Budget,
+  type Category,
   type NewBudget,
   type NewSavingsTarget,
   type SavingsTarget,
@@ -37,7 +42,7 @@ import {
 import { createLocalStorageRepository, type SmartSpendRepository } from "@/repository/repository";
 import { mutationError, type HydrationStatus, type MutationResult } from "@/types";
 import { validateImportPayload } from "@/app/backup";
-import type { PersistedData } from "@/repository/storage-schema";
+import { seedDefaultCategories, type PersistedData } from "@/repository/storage-schema";
 import { pushToast } from "@/app/toast";
 
 /**
@@ -93,6 +98,10 @@ interface SmartSpendStore {
   restoreSavingsTarget: (id: string) => MutationResult<SavingsTarget | undefined>;
 
   createBudget: (input: Omit<Budget, "id" | "createdAt" | "updatedAt"> & { id?: string }) => MutationResult<Budget | undefined>;
+  createCategory: (input: Omit<Category, "id" | "createdAt" | "updatedAt" | "archivedAt" | "color"> & { id?: string }) => MutationResult<Category | undefined>;
+  updateCategory: (id: string, patch: Partial<Pick<Category, "label" | "icon">>) => MutationResult<Category | undefined>;
+  archiveCategory: (id: string) => MutationResult<Category | undefined>;
+  restoreCategory: (id: string) => MutationResult<Category | undefined>;
   updateBudget: (
     id: string,
     patch: Partial<Pick<Budget, "categoryId" | "month" | "limitAmount">>,
@@ -116,8 +125,9 @@ function repository(): SmartSpendRepository {
 }
 
 const EMPTY: AppData = {
-  version: 2,
+  version: 3,
   wallets: [],
+  categories: seedDefaultCategories(),
   transactions: [],
   savingsTargets: [],
   budgets: [],
@@ -314,6 +324,37 @@ export const useSmartSpendStore = create<SmartSpendStore>()((set, get) => {
       return findBudget(get, id);
     },
 
+
+    /* ------------------------------ categories ----------------------------- */
+    createCategory(input) {
+      const id = input.id ?? createId();
+      const result = commit((data) => applyCreateCategory(data, { ...input, id }));
+      if (!result.ok) return result;
+      pushToast(`Kategori "${input.label}" dibuat.`, "success");
+      return findCategory(get, id);
+    },
+
+    updateCategory(id, patch) {
+      const result = commit((data) => applyUpdateCategory(data, id, patch));
+      if (!result.ok) return result;
+      pushToast("Kategori diperbarui.", "success");
+      return findCategory(get, id);
+    },
+
+    archiveCategory(id) {
+      const result = commit((data) => applyArchiveCategory(data, id));
+      if (!result.ok) return result;
+      pushToast("Kategori diarsipkan. Riwayat tetap memakai kategori ini.", "success");
+      return findCategory(get, id);
+    },
+
+    restoreCategory(id) {
+      const result = commit((data) => applyRestoreCategory(data, id));
+      if (!result.ok) return result;
+      pushToast("Kategori dipulihkan.", "success");
+      return findCategory(get, id);
+    },
+
     /* -------------------------- data management --------------------------- */
     importDataset(raw) {
       const validation = validateImportPayload(raw);
@@ -343,6 +384,11 @@ export const useSmartSpendStore = create<SmartSpendStore>()((set, get) => {
     },
   };
 });
+
+function findCategory(get: () => SmartSpendStore, id: string): MutationResult<Category | undefined> {
+  const category = get().data.categories.find((candidate) => candidate.id === id);
+  return category ? { ok: true, value: category } : mutationError("NOT_FOUND", "Kategori tidak ditemukan.");
+}
 
 function findTarget(
   get: () => SmartSpendStore,

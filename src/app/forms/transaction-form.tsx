@@ -13,7 +13,7 @@ import {
 import { FormAmount, FormDate, FormNote, FormPaymentMethod, FormSelect } from "@/app/forms/fields";
 import { Segmented } from "@/components/ui/forms";
 import { Badge, Button, Card, StickyActions } from "@/components/ui/layout";
-import { ALL_CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/domain/categories";
+import { activeCategoriesForType, categoriesForType } from "@/domain/categories";
 import type { SelectOption } from "@/components/ui/forms";
 import { useSmartSpendStore } from "@/app/store";
 import { getTodayCalendarDate } from "@/domain/calendar";
@@ -130,12 +130,19 @@ export function TransactionForm({
   const savingsOptions = data.savingsTargets
     .filter((target) => target.archivedAt == null)
     .map((target) => ({ value: target.id, label: target.name }));
-  const categoryOptions = (selectedKind === "income"
-    ? INCOME_CATEGORIES
-    : selectedKind === "expense"
-      ? EXPENSE_CATEGORIES
-      : ALL_CATEGORIES
-  ).map((category) => ({ value: category.id, label: category.label }));
+  const categoryOptions = (() => {
+    if (selectedKind !== "income" && selectedKind !== "expense") return [];
+    const active = activeCategoriesForType(selectedKind, data.categories);
+    const current = transaction?.categoryId
+      ? categoriesForType(selectedKind, data.categories).find((category) => category.id === transaction.categoryId)
+      : undefined;
+    const list = current && !active.some((category) => category.id === current.id) ? [current, ...active] : active;
+    return list.map((category) => ({
+      value: category.id,
+      label: `${category.label}${category.archivedAt ? " (arsip)" : ""}`,
+      disabled: mode === "create" && category.archivedAt != null,
+    }));
+  })();
 
   // "Tersedia" is the *derived* balance, so the user sees exactly what the
   // domain is about to validate the outflow against.

@@ -18,7 +18,7 @@ import {
   validateImportPayload,
 } from "@/app/backup";
 import { calculateSavingsBalance, calculateTotalMoney, calculateWalletBalance } from "@/domain/ledger";
-import { STORAGE_VERSION } from "@/repository/storage-schema";
+import { seedDefaultCategories, STORAGE_VERSION } from "@/repository/storage-schema";
 import { at, emptyData, on } from "../fixtures";
 
 /**
@@ -150,11 +150,11 @@ describe("CRUD mutations keep the ledger consistent", () => {
 });
 
 describe("export payload (spec §63)", () => {
-  it("carries the metadata and the five collections, and nothing else", () => {
+  it("carries the metadata and the six collections, and nothing else", () => {
     const data = scenario();
     const payload = buildExportPayload(data, NOW);
     expect(Object.keys(payload).sort()).toEqual(
-      ["appName", "budgets", "exportedAt", "schemaVersion", "settings", "savingsTargets", "transactions", "version", "wallets"].sort(),
+      ["appName", "budgets", "categories", "exportedAt", "schemaVersion", "settings", "savingsTargets", "transactions", "version", "wallets"].sort(),
     );
     expect(payload.appName).toBe("SmartSpend");
     expect(payload.schemaVersion).toBe(STORAGE_VERSION);
@@ -164,6 +164,7 @@ describe("export payload (spec §63)", () => {
       transactions: data.transactions,
       savingsTargets: data.savingsTargets,
       budgets: data.budgets,
+      categories: data.categories,
     });
     // no derived balances leak into the file
     const text = serializeExport(data, NOW);
@@ -186,11 +187,63 @@ describe("import validation (spec §64–§65)", () => {
       expect(result.data.transactions).toEqual(data.transactions);
       expect(result.data.savingsTargets).toEqual(data.savingsTargets);
       expect(result.data.budgets).toEqual(data.budgets);
+      expect(result.data.categories).toEqual(data.categories);
       expect(result.data.version).toBe(STORAGE_VERSION);
       expect(result.preview.counts).toEqual({ wallets: 2, transactions: 3, savingsTargets: 1, budgets: 0 });
       expect(result.preview.firstTransactionDate).toBeTruthy();
       expect(result.warnings).toEqual([]);
     }
+  });
+
+  it("imports a representative pre-Phase-2H backup without rewriting ledger references", () => {
+    const legacyBackup = {
+      appName: "SmartSpend",
+      schemaVersion: 2,
+      exportedAt: at(2026, 9, 1),
+      version: 2,
+      wallets: [
+        { id: "bca", name: "BCA", type: "bank", provider: null, createdAt: at(2026, 8, 1), updatedAt: at(2026, 8, 1), archivedAt: null },
+        { id: "cash", name: "Cash", type: "cash", provider: null, createdAt: at(2026, 8, 1), updatedAt: at(2026, 8, 1), archivedAt: null },
+      ],
+      transactions: [
+        {
+          id: "income-old",
+          type: "income",
+          amount: 2_500_000,
+          destinationWalletId: "bca",
+          categoryId: "gaji",
+          date: on(2026, 8, 2),
+          createdAt: at(2026, 8, 2),
+          updatedAt: at(2026, 8, 2),
+        },
+        {
+          id: "expense-old",
+          type: "expense",
+          amount: 250_000,
+          sourceWalletId: "bca",
+          categoryId: "makanan",
+          date: on(2026, 8, 3),
+          createdAt: at(2026, 8, 3),
+          updatedAt: at(2026, 8, 3),
+        },
+      ],
+      savingsTargets: [{ id: "dana", name: "Dana Darurat", targetAmount: 5_000_000, createdAt: at(2026, 8, 1), updatedAt: at(2026, 8, 1), archivedAt: null }],
+      budgets: [{ id: "budget-food", categoryId: "makanan", month: "2026-08", limitAmount: 1_000_000, createdAt: at(2026, 8, 1), updatedAt: at(2026, 8, 1) }],
+      settings: { currency: "IDR" },
+    };
+
+    const result = validateImportPayload(legacyBackup);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.wallets.map((wallet) => wallet.id)).toEqual(["bca", "cash"]);
+    expect(result.data.transactions.map((transaction) => transaction.id)).toEqual(["income-old", "expense-old"]);
+    expect(result.data.transactions.map((transaction) => transaction.categoryId)).toEqual(["gaji", "makanan"]);
+    expect(result.data.budgets.map((budget) => budget.categoryId)).toEqual(["makanan"]);
+    expect(result.data.savingsTargets.map((target) => target.id)).toEqual(["dana"]);
+    expect(result.data.transactions.map((transaction) => transaction.amount)).toEqual([2_500_000, 250_000]);
+    expect(result.data.transactions.map((transaction) => transaction.date)).toEqual(["2026-08-02", "2026-08-03"]);
+    expect(result.data.categories.map((category) => category.id)).toEqual(seedDefaultCategories().map((category) => category.id));
+    expect(new Set(result.data.categories.map((category) => category.id)).size).toBe(result.data.categories.length);
   });
 
   it("previews counts before the user confirms", () => {
@@ -225,6 +278,20 @@ describe("import validation (spec §64–§65)", () => {
     if (!result.ok) {
       expect(result.message).toMatch(/ditolak/i);
       expect(result.issues.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("rejects malformed category records without partially importing", () => {
+    const broken = JSON.parse(serializeExport(scenario(), NOW)) as Record<string, unknown> & {
+      categories: { id: string; icon: string }[];
+    };
+    broken.categories = [{ ...broken.categories[0]!, icon: "not-a-supported-icon" }];
+
+    const result = validateImportPayload(broken);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toMatch(/skema/i);
+      expect(result.issues.some((issue) => /categories/i.test(issue.path) && /Icon kategori/i.test(issue.message))).toBe(true);
     }
   });
 

@@ -28,7 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Lainnya",
     href: "/more",
     icon: MoreHorizontal,
-    match: (p) => p.startsWith("/more") || p.startsWith("/reports") || p.startsWith("/settings"),
+    match: (p) => p.startsWith("/more") || p.startsWith("/reports") || p.startsWith("/settings") || p.startsWith("/categories"),
   },
 ];
 

@@ -1,5 +1,5 @@
 import { validateLedgerChronology } from "@/domain/validation";
-import type { Budget, SavingsTarget, Transaction, Wallet } from "@/domain/models";
+import type { Budget, Category, SavingsTarget, Transaction, Wallet } from "@/domain/models";
 import { budgetKey } from "@/domain/models";
 import {
   createEmptyData,
@@ -31,6 +31,7 @@ export interface ExportPayload {
   transactions: Transaction[];
   savingsTargets: SavingsTarget[];
   budgets: Budget[];
+  categories: Category[];
   settings: PersistedData["settings"];
 }
 
@@ -45,6 +46,7 @@ export function buildExportPayload(data: PersistedData, now: Date = new Date()):
     transactions: data.transactions,
     savingsTargets: data.savingsTargets,
     budgets: data.budgets,
+    categories: data.categories,
     settings: data.settings ?? null,
   };
 }
@@ -123,6 +125,7 @@ export function validateImportPayload(raw: unknown): ImportValidation {
     transactions: source.transactions ?? [],
     savingsTargets: source.savingsTargets ?? [],
     budgets: source.budgets ?? [],
+    categories: source.categories,
     settings: source.settings ?? null,
   };
 

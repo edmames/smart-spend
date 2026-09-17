@@ -9,7 +9,7 @@ import { amountOf, budgetFormSchema, type BudgetFormValues } from "@/app/forms/s
 import { FormAmount, FormSelect } from "@/app/forms/fields";
 import { Button, Card, StickyActions } from "@/components/ui/layout";
 import { useSmartSpendStore } from "@/app/store";
-import { EXPENSE_CATEGORIES } from "@/domain/categories";
+import { activeCategoriesForType, categoriesForType } from "@/domain/categories";
 import { formatIDR } from "@/domain/money";
 import type { Budget } from "@/domain/models";
 
@@ -81,12 +81,20 @@ export function BudgetForm({
       .map((b) => b.categoryId),
   );
 
-  const categoryOptions = EXPENSE_CATEGORIES.map((category) => {
+  const baseCategories = mode === "edit" && budget
+    ? (() => {
+        const active = activeCategoriesForType("expense", data.categories);
+        const current = categoriesForType("expense", data.categories).find((category) => category.id === budget.categoryId);
+        return current && !active.some((category) => category.id === current.id) ? [current, ...active] : active;
+      })()
+    : activeCategoriesForType("expense", data.categories);
+
+  const categoryOptions = baseCategories.map((category) => {
     const alreadyExists = existingInMonth.has(category.id);
     return {
       value: category.id,
-      label: alreadyExists ? `${category.label} (sudah ada)` : category.label,
-      disabled: alreadyExists,
+      label: `${alreadyExists ? `${category.label} (sudah ada)` : category.label}${category.archivedAt ? " (arsip)" : ""}`,
+      disabled: alreadyExists || (mode === "create" && category.archivedAt != null),
     };
   });
 

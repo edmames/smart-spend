@@ -2,13 +2,13 @@
 
 import { useMemo } from "react";
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type PaymentMethod } from "@/domain/models";
-import { ALL_CATEGORIES, categoriesForType } from "@/domain/categories";
+import { categoriesForType } from "@/domain/categories";
 import { useSmartSpendStore } from "@/app/store";
 import { formatIDR } from "@/domain/money";
 import { calculateWalletBalance } from "@/domain/ledger";
 
 /**
- * SmartSpend — option lists for forms and filters.
+ * SmartSpend â€” option lists for forms and filters.
  *
  * Every picker is built from the store, so archived wallets disappear from
  * "new transaction" lists but remain visible (and correctly labelled) on
@@ -38,7 +38,7 @@ export function useWalletOptions(options: { includeArchived?: boolean; withBalan
   }, [data.wallets, data.transactions, options.includeArchived, options.withBalance]);
 }
 
-/** Wallet options rendered as "BCA · Rp1.200.000" — a single string keeps <select> honest on mobile. */
+/** Wallet options rendered as "BCA Â· Rp1.200.000" â€” a single string keeps <select> honest on mobile. */
 export function useWalletSelectOptions(options: { includeArchived?: boolean } = {}): Option[] {
   const data = useSmartSpendStore((state) => state.data);
   const includeArchived = options.includeArchived ?? false;
@@ -50,7 +50,7 @@ export function useWalletSelectOptions(options: { includeArchived?: boolean } = 
           const balance = calculateWalletBalance(data.transactions, wallet.id);
           return {
             value: wallet.id,
-            label: `${wallet.name} · ${formatIDR(balance)}${wallet.archivedAt ? " (arsip)" : ""}`,
+            label: `${wallet.name} Â· ${formatIDR(balance)}${wallet.archivedAt ? " (arsip)" : ""}`,
           };
         }),
     [data.wallets, data.transactions, includeArchived],
@@ -69,17 +69,33 @@ export function useSavingsOptions(options: { includeArchived?: boolean } = {}): 
   );
 }
 
-export function useCategoryOptions(kind: "income" | "expense"): Option[] {
+export function useCategoryOptions(kind: "income" | "expense", options: { includeArchived?: boolean } = {}): Option[] {
+  const data = useSmartSpendStore((state) => state.data);
+  const includeArchived = options.includeArchived ?? false;
   return useMemo(
-    () => categoriesForType(kind).map((category) => ({ value: category.id, label: category.label })),
-    [kind],
+    () =>
+      categoriesForType(kind, data.categories)
+        .filter((category) => (includeArchived ? true : category.archivedAt == null))
+        .map((category) => ({
+          value: category.id,
+          label: `${category.label}${category.archivedAt ? " (arsip)" : ""}`,
+          disabled: category.archivedAt != null && !includeArchived,
+        })),
+    [data.categories, includeArchived, kind],
   );
 }
 
-export const ALL_CATEGORY_OPTIONS: Option[] = ALL_CATEGORIES.map((category) => ({
-  value: category.id,
-  label: `${category.label} (${category.type === "income" ? "masuk" : "keluar"})`,
-}));
+export function useAllCategoryOptions(): Option[] {
+  const categories = useSmartSpendStore((state) => state.data.categories);
+  return useMemo(
+    () =>
+      categories.map((category) => ({
+        value: category.id,
+        label: `${category.label} (${category.type === "income" ? "masuk" : "keluar"})${category.archivedAt ? " · arsip" : ""}`,
+      })),
+    [categories],
+  );
+}
 
 export const PAYMENT_METHOD_OPTIONS: Option[] = PAYMENT_METHODS.map((method: PaymentMethod) => ({
   value: method,

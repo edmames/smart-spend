@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { ArrowDown, ArrowUp, CalendarDays, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { Card } from "@/components/ui/layout";
 import { cn } from "@/lib/cn";
 import { formatIDR } from "@/domain/money";
-import { ALL_CATEGORIES, type CategoryMeta } from "@/domain/categories";
+import { type CategoryMeta } from "@/domain/categories";
+import { useSmartSpendStore } from "@/app/store";
 import { CHART_COLORS } from "@/components/ui/theme";
 import { formatMonthLabel, monthInputValueFor, shiftMonthKey } from "@/app/forms/month";
 import type { MonthlySummary } from "@/domain/selectors";
@@ -130,6 +132,8 @@ export function BreakdownList({
   emptyLabel?: string;
   linkPrefix?: string;
 }) {
+  const categories = useSmartSpendStore((state) => state.data.categories);
+  const categoryLookup = useMemo(() => new Map<string, CategoryMeta>(categories.map((category) => [category.id, category])), [categories]);
   const total = entries.reduce((sum, entry) => sum + entry.amount, 0);
 
   return (
@@ -147,7 +151,7 @@ export function BreakdownList({
             {entries.map((entry) => (
               <span
                 key={entry.categoryId ?? "none"}
-                className={cn("h-full", colorClass(entry.categoryId))}
+                className={cn("h-full", colorClass(entry.categoryId, categoryLookup))}
                 style={{ width: `${entry.percent}%` }}
               />
             ))}
@@ -156,9 +160,9 @@ export function BreakdownList({
             {entries.map((entry) => (
               <li key={entry.categoryId ?? "none"} className="flex items-center justify-between gap-2 py-2">
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", colorClass(entry.categoryId))} aria-hidden />
+                  <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", colorClass(entry.categoryId, categoryLookup))} aria-hidden />
                   <span className="truncate text-[13.5px] font-semibold text-ink">
-                    {labelFor(entry.categoryId)}
+                    {labelFor(entry.categoryId, categoryLookup)}
                   </span>
                   <span className="shrink-0 text-[11px] text-muted">{entry.count}×</span>
                 </span>
@@ -183,16 +187,15 @@ export function BreakdownList({
   );
 }
 
-function labelFor(categoryId: string | null): string {
+function labelFor(categoryId: string | null, categoryLookup: Map<string, CategoryMeta>): string {
   if (!categoryId) return "Tanpa kategori";
-  const meta = CATEGORY_LOOKUP.get(categoryId);
+  const meta = categoryLookup.get(categoryId);
   return meta?.label ?? categoryId;
 }
 
-function colorClass(categoryId: string | null): string {
-  const meta = CATEGORY_LOOKUP.get(categoryId ?? "");
+function colorClass(categoryId: string | null, categoryLookup: Map<string, CategoryMeta>): string {
+  const meta = categoryLookup.get(categoryId ?? "");
   return CHART_CLASS.get(meta?.color ?? "slate") ?? "bg-slate-500";
 }
 
-const CATEGORY_LOOKUP = new Map<string, CategoryMeta>(ALL_CATEGORIES.map((category) => [category.id, category]));
 const CHART_CLASS = new Map<string, string>(Object.entries(CHART_COLORS).map(([key, token]) => [key, token.bar]));

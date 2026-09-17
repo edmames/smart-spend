@@ -10,9 +10,10 @@ import { colorFor } from "@/components/ui/theme";
 import { cn } from "@/lib/cn";
 import { formatMonthLabel } from "@/app/forms/month";
 import type { CategoryBreakdownEntry, BudgetUsage } from "@/domain/selectors";
+import type { Category } from "@/domain/models";
 
-function renderCategoryIcon(categoryId: string | null | undefined, className?: string) {
-  const Icon = getCategoryIcon(categoryId);
+function renderCategoryIcon(categoryId: string | null | undefined, categories: Parameters<typeof getCategoryIcon>[1], className?: string) {
+  const Icon = getCategoryIcon(categoryId, categories);
   return <Icon className={className} strokeWidth={2} aria-hidden />;
 }
 
@@ -71,10 +72,12 @@ export function ExpenseByCategoryCard({
   entries,
   monthKey,
   monthLabel,
+  categories,
 }: {
   entries: CategoryBreakdownEntry[];
   monthKey: string;
   monthLabel: string;
+  categories: readonly Category[];
 }) {
   const total = entries.reduce((sum, e) => sum + e.amount, 0);
 
@@ -98,14 +101,14 @@ export function ExpenseByCategoryCard({
       {/* Compact visualization: proportion bar */}
       <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-line/70" aria-hidden>
         {entries.map((entry) => {
-          const meta = getCategoryMeta(entry.categoryId);
+          const meta = getCategoryMeta(entry.categoryId, categories);
           const color = colorFor(meta?.color);
           return (
             <span
               key={entry.categoryId ?? "none"}
               className={cn("h-full", color.bar)}
               style={{ width: `${entry.percent}%` }}
-              title={`${categoryLabel(entry.categoryId)} ${formatIDR(entry.amount)}`}
+              title={`${categoryLabel(entry.categoryId, "Tanpa kategori", categories)} ${formatIDR(entry.amount)}`}
             />
           );
         })}
@@ -113,14 +116,14 @@ export function ExpenseByCategoryCard({
 
       <ul className="flex flex-col divide-y divide-line/70">
         {entries.map((entry) => {
-          const meta = getCategoryMeta(entry.categoryId);
+          const meta = getCategoryMeta(entry.categoryId, categories);
           const color = colorFor(meta?.color);
           return (
             <li key={entry.categoryId ?? "none"} className="flex items-center justify-between gap-2 py-2.5">
               <Link
                 href={`/transactions?month=${monthKey}&category=${entry.categoryId ?? ""}&type=expense`}
                 className="flex min-w-0 flex-1 items-center gap-2 rounded-lg -mx-1 px-1 py-1 hover:bg-elevated transition"
-                aria-label={`Lihat transaksi ${categoryLabel(entry.categoryId)} bulan ${monthLabel}`}
+                aria-label={`Lihat transaksi ${categoryLabel(entry.categoryId, "Tanpa kategori", categories)} bulan ${monthLabel}`}
               >
                 <span
                   className={cn(
@@ -129,10 +132,10 @@ export function ExpenseByCategoryCard({
                     color.border,
                   )}
                 >
-                  {renderCategoryIcon(entry.categoryId, cn("h-4 w-4", color.text))}
+                  {renderCategoryIcon(entry.categoryId, categories, cn("h-4 w-4", color.text))}
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate text-[13.5px] font-semibold text-ink">{categoryLabel(entry.categoryId)}</span>
+                  <span className="truncate text-[13.5px] font-semibold text-ink">{categoryLabel(entry.categoryId, "Tanpa kategori", categories)}</span>
                   <span className="text-[11px] tabular text-muted">
                     {entry.percent.toFixed(0)}% · {entry.count} transaksi
                   </span>
@@ -236,10 +239,12 @@ export function BudgetVsActualCard({
   usages,
   monthKey,
   monthLabel,
+  categories,
 }: {
   usages: BudgetUsage[];
   monthKey: string;
   monthLabel: string;
+  categories: readonly Category[];
 }) {
   if (usages.length === 0) {
     return (
@@ -269,7 +274,7 @@ export function BudgetVsActualCard({
       </div>
       <ul className="flex flex-col gap-3">
         {usages.map((usage) => {
-          const meta = getCategoryMeta(usage.budget.categoryId);
+          const meta = getCategoryMeta(usage.budget.categoryId, categories);
           const color = colorFor(meta?.color);
           const stateInfo = usage.overBudget
             ? { label: "MELEBIHI ANGGARAN", tone: "expense" as const, detail: `${formatIDR(usage.spent - usage.limit)} melebihi` }
@@ -282,10 +287,10 @@ export function BudgetVsActualCard({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className={cn("inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border", color.soft, color.border)}>
-                    {renderCategoryIcon(usage.budget.categoryId, cn("h-4 w-4", color.text))}
+                    {renderCategoryIcon(usage.budget.categoryId, categories, cn("h-4 w-4", color.text))}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate text-[13.5px] font-bold text-ink">{categoryLabel(usage.budget.categoryId)}</p>
+                    <p className="truncate text-[13.5px] font-bold text-ink">{categoryLabel(usage.budget.categoryId, "Tanpa kategori", categories)}</p>
                     <p className="text-[11px] tabular text-muted">
                       {formatIDR(usage.spent)} / {formatIDR(usage.limit)} · {usage.percent.toFixed(0)}%
                     </p>
@@ -293,7 +298,7 @@ export function BudgetVsActualCard({
                 </div>
                 <Badge tone={stateInfo.tone}>{stateInfo.label}</Badge>
               </div>
-              <ProgressBar percent={usage.percent} tone={stateInfo.tone} label={`Budget ${categoryLabel(usage.budget.categoryId)}`} />
+              <ProgressBar percent={usage.percent} tone={stateInfo.tone} label={`Budget ${categoryLabel(usage.budget.categoryId, "Tanpa kategori", categories)}`} />
               <div className="flex items-center justify-between text-[11px]">
                 <span className={cn(usage.overBudget ? "font-semibold text-expense" : "text-muted")}>{stateInfo.detail}</span>
                 <span className="tabular font-semibold text-muted">{usage.percent.toFixed(0)}% aktual</span>

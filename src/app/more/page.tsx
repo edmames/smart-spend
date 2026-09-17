@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Download, PiggyBank, Plus, Receipt, Settings, Wallet } from "lucide-react";
+import { ArrowRight, Download, FolderKanban, PiggyBank, Plus, Receipt, Settings, Wallet } from "lucide-react";
 import { Badge, Card, LinkButton, PageHeader, SectionTitle } from "@/components/ui/layout";
 import { HydrationGate } from "@/components/ui/hydration-gate";
 import { useDerived } from "@/app/derived";
@@ -29,6 +29,12 @@ export default function MorePage() {
               icon={<Receipt className="h-[18px] w-[18px]" aria-hidden />}
               label="Laporan"
               hint="Ringkasan bulanan & rincian kategori"
+            />
+            <MoreRow
+              href="/categories"
+              icon={<FolderKanban className="h-[18px] w-[18px]" aria-hidden />}
+              label="Kategori"
+              hint="Kelola kategori pemasukan & pengeluaran"
             />
             <MoreRow
               href="/settings"

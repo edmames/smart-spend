@@ -9,9 +9,10 @@ import {
   validateTransaction,
 } from "@/domain";
 import type { LedgerData } from "@/domain/validation";
-import { budgetKey, type Budget, type NewBudget, type NewSavingsTarget, type SavingsTarget, type Transaction, type Wallet } from "@/domain/models";
+import { budgetKey, type Budget, type Category, type NewBudget, type NewCategory, type NewSavingsTarget, type SavingsTarget, type Transaction, type Wallet } from "@/domain/models";
 import { createId } from "@/domain/id";
 import { formatIDR } from "@/domain/money";
+import { getCategoryMeta, isSupportedCategoryIcon } from "@/domain/categories";
 import { createEmptyData, type PersistedData } from "@/repository/storage-schema";
 import { mutationError, type MutationError, type MutationResult } from "@/types";
 
@@ -291,6 +292,108 @@ export function applyRestoreSavingsTarget(
   return { ok: true, value: { ...data, savingsTargets } };
 }
 
+
+/* -------------------------------------------------------------------------- */
+/* Categories                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export interface CreateCategoryInput extends Omit<NewCategory, "createdAt" | "updatedAt" | "archivedAt" | "color"> {
+  now?: Date;
+}
+
+export function normaliseCategoryName(name: string): string {
+  return name.trim().replace(/\s+/g, " ");
+}
+
+function duplicateActiveCategoryName(categories: readonly Category[], name: string, type: Category["type"], exceptId?: string): boolean {
+  const normalized = normaliseCategoryName(name).toLocaleLowerCase("id-ID");
+  return categories.some(
+    (category) =>
+      category.id !== exceptId &&
+      category.type === type &&
+      category.archivedAt == null &&
+      category.label.toLocaleLowerCase("id-ID") === normalized,
+  );
+}
+
+export function applyCreateCategory(data: AppData, input: CreateCategoryInput): MutationResult<AppData> {
+  const label = normaliseCategoryName(input.label);
+  if (label.length < 1) return mutationError("VALIDATION_FAILED", "Nama kategori wajib diisi.");
+  if (label.length > 40) return mutationError("VALIDATION_FAILED", "Nama kategori maksimal 40 karakter.");
+  if (input.type !== "expense" && input.type !== "income") return mutationError("VALIDATION_FAILED", "Jenis kategori tidak valid.");
+  if (!isSupportedCategoryIcon(input.icon)) return mutationError("VALIDATION_FAILED", "Icon kategori tidak valid.");
+  if (duplicateActiveCategoryName(data.categories, label, input.type)) {
+    return mutationError("VALIDATION_FAILED", "Kategori aktif dengan nama ini sudah ada untuk jenis yang sama.");
+  }
+  const timestamp = (input.now ?? new Date()).toISOString();
+  const category: Category = {
+    id: input.id ?? createId(),
+    label,
+    type: input.type,
+    icon: input.icon,
+    color: input.type === "expense" ? "slate" : "teal",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    archivedAt: null,
+  };
+  return { ok: true, value: { ...data, categories: [...data.categories, category] } };
+}
+
+export function applyUpdateCategory(
+  data: AppData,
+  id: string,
+  patch: Partial<Pick<Category, "label" | "icon">>,
+  now: Date = new Date(),
+): MutationResult<AppData> {
+  const existing = data.categories.find((category) => category.id === id);
+  if (!existing) return mutationError("NOT_FOUND", "Kategori tidak ditemukan.");
+  const label = patch.label === undefined ? existing.label : normaliseCategoryName(patch.label);
+  if (label.length < 1) return mutationError("VALIDATION_FAILED", "Nama kategori wajib diisi.");
+  if (label.length > 40) return mutationError("VALIDATION_FAILED", "Nama kategori maksimal 40 karakter.");
+  const icon = patch.icon ?? existing.icon;
+  if (!isSupportedCategoryIcon(icon)) return mutationError("VALIDATION_FAILED", "Icon kategori tidak valid.");
+  if (existing.archivedAt == null && duplicateActiveCategoryName(data.categories, label, existing.type, id)) {
+    return mutationError("VALIDATION_FAILED", "Kategori aktif dengan nama ini sudah ada untuk jenis yang sama.");
+  }
+  const categories = data.categories.map((category) =>
+    category.id === id ? { ...category, label, icon, updatedAt: now.toISOString() } : category,
+  );
+  return { ok: true, value: { ...data, categories } };
+}
+
+export function applyArchiveCategory(data: AppData, id: string, now: Date = new Date()): MutationResult<AppData> {
+  const existing = data.categories.find((category) => category.id === id);
+  if (!existing) return mutationError("NOT_FOUND", "Kategori tidak ditemukan.");
+  if (existing.archivedAt) return mutationError("ARCHIVED", "Kategori sudah diarsipkan.");
+  const timestamp = now.toISOString();
+  return {
+    ok: true,
+    value: {
+      ...data,
+      categories: data.categories.map((category) =>
+        category.id === id ? { ...category, archivedAt: timestamp, updatedAt: timestamp } : category,
+      ),
+    },
+  };
+}
+
+export function applyRestoreCategory(data: AppData, id: string, now: Date = new Date()): MutationResult<AppData> {
+  const existing = data.categories.find((category) => category.id === id);
+  if (!existing) return mutationError("NOT_FOUND", "Kategori tidak ditemukan.");
+  if (duplicateActiveCategoryName(data.categories, existing.label, existing.type, id)) {
+    return mutationError("VALIDATION_FAILED", "Nama kategori ini sudah dipakai kategori aktif lain.");
+  }
+  return {
+    ok: true,
+    value: {
+      ...data,
+      categories: data.categories.map((category) =>
+        category.id === id ? { ...category, archivedAt: null, updatedAt: now.toISOString() } : category,
+      ),
+    },
+  };
+}
+
 /* -------------------------------------------------------------------------- */
 /* Transactions                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -336,6 +439,7 @@ export function applyCreateTransaction(
   const result = validateTransaction(transaction, {
     wallets: data.wallets,
     savingsTargets: data.savingsTargets,
+    categories: data.categories,
     // Candidate included: availability is measured strictly before this record
     // (see ValidateTransactionContext). Passing the stored ledger alone would let
     // a new record fund itself when it sorts before the money that covers it.
@@ -391,6 +495,7 @@ export function applyUpdateTransaction(
   const result = validateTransaction(updated, {
     wallets: data.wallets,
     savingsTargets: data.savingsTargets,
+    categories: data.categories,
     // Replace the stored version with the candidate, then measure availability
     // before it — so an edit may reuse the money the old version had tied up.
     transactions: ledgerWithCandidate(data.transactions, updated),
@@ -461,6 +566,10 @@ export function applyCreateBudget(data: AppData, input: NewBudget, now: Date = n
     createdAt: timestamp,
     updatedAt: timestamp,
   };
+  const meta = getCategoryMeta(budget.categoryId, data.categories);
+  if (!meta || meta.type !== "expense" || meta.archivedAt != null) {
+    return mutationError("VALIDATION_FAILED", "Pilih kategori pengeluaran aktif.");
+  }
   const duplicate = data.budgets.some((candidate) => budgetKey(candidate) === budgetKey(budget));
   if (duplicate) {
     return mutationError("VALIDATION_FAILED", "Budget untuk kategori & bulan ini sudah ada. Ubah yang lama.");
@@ -482,6 +591,10 @@ export function applyUpdateBudget(
     ...(typeof patch.limitAmount === "number" ? { limitAmount: patch.limitAmount } : {}),
     updatedAt: now.toISOString(),
   };
+  const meta = getCategoryMeta(updated.categoryId, data.categories);
+  if (!meta || meta.type !== "expense") {
+    return mutationError("VALIDATION_FAILED", "Pilih kategori pengeluaran.");
+  }
   const duplicate = data.budgets.some(
     (candidate) => candidate.id !== id && budgetKey(candidate) === budgetKey(updated),
   );
