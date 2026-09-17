@@ -61,22 +61,22 @@ export function TotalMoneyCard({
   savingsTotal: number;
 }) {
   return (
-    <Card as="section" className="overflow-hidden border-transparent bg-[#123938] p-0 text-white">
+    <section className="total-money-hero overflow-hidden rounded-xl border">
       <div className="px-4 pb-3.5 pt-4">
-        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-white/65">Total uang Anda</p>
-        <p className="financial-display mt-1 text-[2rem] text-white">{formatIDR(total)}</p>
+        <p className="total-money-hero__eyebrow text-[11px] font-bold uppercase tracking-[0.08em]">Total uang Anda</p>
+        <p className="financial-display total-money-hero__amount mt-1 text-[2rem]">{formatIDR(total)}</p>
       </div>
-      <div className="grid grid-cols-2 border-t border-white/10 bg-white/[0.06]">
+      <div className="total-money-hero__breakdown grid grid-cols-2 border-t">
         <div className="px-4 py-2.5">
-          <p className="text-[11px] font-semibold text-white/60">Dompet</p>
-          <p className="mt-0.5 text-[13.5px] font-bold tabular text-white">{formatIDR(walletTotal)}</p>
+          <p className="total-money-hero__label text-[11px] font-semibold">Dompet</p>
+          <p className="total-money-hero__value mt-0.5 text-[13.5px] font-bold tabular">{formatIDR(walletTotal)}</p>
         </div>
-        <div className="border-l border-white/10 px-4 py-2.5">
-          <p className="text-[11px] font-semibold text-white/60">Tabungan</p>
-          <p className="mt-0.5 text-[13.5px] font-bold tabular text-white">{formatIDR(savingsTotal)}</p>
+        <div className="total-money-hero__split border-l px-4 py-2.5">
+          <p className="total-money-hero__label text-[11px] font-semibold">Tabungan</p>
+          <p className="total-money-hero__value mt-0.5 text-[13.5px] font-bold tabular">{formatIDR(savingsTotal)}</p>
         </div>
       </div>
-    </Card>
+    </section>
   );
 }
 

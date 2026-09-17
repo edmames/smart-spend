@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import DashboardPage from "@/app/page";
+import { TotalMoneyCard } from "@/components/summary/summary";
 import { useSmartSpendStore, configureRepository } from "@/app/store";
 import { createLocalStorageRepository } from "@/repository/repository";
 import { MemoryStorageAdapter } from "@/repository/storage";
@@ -137,6 +138,17 @@ describe("Dashboard Phase 2B", () => {
     expect(within(walletSection).getByText("Rp1.200.000")).toBeInTheDocument();
     expect(within(walletSection).getByText("Jago")).toBeInTheDocument();
     expect(within(walletSection).getByRole("link", { name: /Semua dompet/i })).toHaveAttribute("href", "/wallets");
+  });
+
+  it("uses semantic hero styling instead of white text on the shared surface card", () => {
+    render(<TotalMoneyCard total={1_000_000} walletTotal={1_000_000} savingsTotal={0} />);
+
+    const hero = screen.getByText("Total uang Anda").closest("section");
+    expect(hero).toHaveClass("total-money-hero");
+    expect(hero).not.toHaveClass("bg-surface");
+    expect(hero).not.toHaveClass("text-white");
+    expect(screen.getAllByText("Rp1.000.000").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Rp0")).toBeInTheDocument();
   });
 
   it("keeps internal movements and opening balance out of the month summary", () => {
