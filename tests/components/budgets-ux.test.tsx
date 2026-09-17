@@ -372,6 +372,37 @@ describe("Budgets UX — Edit Budget Flow", () => {
     const tx = useSmartSpendStore.getState().data.transactions.find((t) => t.id === "tx-hib-1");
     expect(tx?.amount).toBe(250_000);
   });
+
+  it("renders in-flow actions, hides header '+ Anggaran' action during inline edit, and restores on cancel", async () => {
+    const user = userEvent.setup();
+    render(<BudgetsPage />);
+
+    // '+ Anggaran' buttons are visible initially
+    expect(screen.getAllByRole("link", { name: "Anggaran" })).toHaveLength(2);
+
+    // Open inline edit for Makanan
+    const editBtn = screen.getByRole("button", { name: "Ubah budget Makanan" });
+    await user.click(editBtn);
+
+    // '+ Anggaran' actions are hidden while inline edit is active to avoid competing actions
+    expect(screen.queryAllByRole("link", { name: "Anggaran" })).toHaveLength(0);
+
+    // In-flow buttons are present inside the card
+    const cancelBtn = screen.getByRole("button", { name: "Batal" });
+    const saveBtn = screen.getByRole("button", { name: "Simpan perubahan" });
+    expect(cancelBtn).toBeInTheDocument();
+    expect(saveBtn).toBeInTheDocument();
+
+    // Cancel inline edit
+    await user.click(cancelBtn);
+
+    // Form closes without mutating budget, and header action is restored
+    expect(screen.queryByRole("button", { name: "Simpan perubahan" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Anggaran" })).toHaveLength(2);
+
+    const budget = useSmartSpendStore.getState().data.budgets.find((b) => b.id === "budget-makanan-2026-09");
+    expect(budget?.limitAmount).toBe(1_000_000);
+  });
 });
 
 describe("Budgets UX — Delete Budget Flow", () => {

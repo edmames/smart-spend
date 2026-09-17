@@ -56,10 +56,12 @@ function BudgetsContent() {
         subtitle="Satu batas per kategori per bulan, dihitung dari pengeluaran nyata saja."
         backHref="/more"
         actions={
-          <LinkButton href={`/budgets/new?month=${monthKey}`} size="sm">
-            <Plus className="h-4 w-4" aria-hidden />
-            Anggaran
-          </LinkButton>
+          editingId === null ? (
+            <LinkButton href={`/budgets/new?month=${monthKey}`} size="sm">
+              <Plus className="h-4 w-4" aria-hidden />
+              Anggaran
+            </LinkButton>
+          ) : undefined
         }
       />
 
@@ -143,10 +145,12 @@ function BudgetsContent() {
 
             <SectionTitle
               action={
-                <LinkButton href={`/budgets/new?month=${monthKey}`} size="sm" variant="soft">
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  Anggaran
-                </LinkButton>
+                editingId === null ? (
+                  <LinkButton href={`/budgets/new?month=${monthKey}`} size="sm" variant="soft">
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    Anggaran
+                  </LinkButton>
+                ) : undefined
               }
             >
               Per kategori
@@ -256,6 +260,8 @@ function BudgetsContent() {
                           mode="edit"
                           budget={usage.budget}
                           defaultMonth={monthKey}
+                          actionsMode="inline"
+                          wrapCard={false}
                           onCancel={() => setEditingId(null)}
                           onSuccess={() => setEditingId(null)}
                         />

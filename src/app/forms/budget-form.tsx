@@ -22,6 +22,8 @@ export function BudgetForm({
   budget,
   defaultMonth,
   defaultCategory,
+  actionsMode = "sticky",
+  wrapCard = true,
   onCancel,
   onSuccess,
 }: {
@@ -29,6 +31,8 @@ export function BudgetForm({
   budget?: Budget;
   defaultMonth: string;
   defaultCategory?: string;
+  actionsMode?: "sticky" | "inline";
+  wrapCard?: boolean;
   onCancel?: () => void;
   onSuccess?: (budget: Budget) => void;
 }) {
@@ -86,51 +90,85 @@ export function BudgetForm({
     };
   });
 
+  const formFields = (
+    <>
+      {form.formState.errors.root?.message ? (
+        <p role="alert" className="rounded-lg bg-expense-soft px-3 py-2 text-[12.5px] font-semibold text-expense">
+          {form.formState.errors.root.message}
+        </p>
+      ) : null}
+
+      <FormSelect
+        label="Kategori pengeluaran"
+        control={form.control}
+        name="categoryId"
+        options={categoryOptions}
+        placeholder="Pilih kategori"
+        hint="Budget hanya menghitung pengeluaran nyata — transfer dan setoran tabungan diabaikan."
+      />
+      <FormSelect
+        label="Bulan"
+        control={form.control}
+        name="month"
+        options={monthOptions(month, defaultMonth)}
+        placeholder="Pilih bulan"
+      />
+      <FormAmount label="Batas anggaran" control={form.control} name="limitAmount" />
+
+      <div className="rounded-xl bg-brand-soft/60 px-3 py-2 text-[13px] text-ink">
+        <span className="text-muted">Pengeluaran tercatat pada {formatMonthLabel(month)}: </span>
+        <strong className="tabular font-extrabold">{formatIDR(spent)}</strong>
+      </div>
+    </>
+  );
+
+  const inFlowActions = (
+    <div className="grid grid-cols-2 gap-2 pt-1">
+      <Button
+        variant="secondary"
+        block
+        type="button"
+        onClick={() => (onCancel ? onCancel() : router.back())}
+        disabled={form.formState.isSubmitting}
+      >
+        Batal
+      </Button>
+      <Button type="submit" block disabled={form.formState.isSubmitting}>
+        {mode === "create" ? "Simpan anggaran" : "Simpan perubahan"}
+      </Button>
+    </div>
+  );
+
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
-      <Card as="section" className="flex flex-col gap-3">
-        {form.formState.errors.root?.message ? (
-          <p role="alert" className="rounded-lg bg-expense-soft px-3 py-2 text-[12.5px] font-semibold text-expense">
-            {form.formState.errors.root.message}
-          </p>
-        ) : null}
-
-        <FormSelect
-          label="Kategori pengeluaran"
-          control={form.control}
-          name="categoryId"
-          options={categoryOptions}
-          placeholder="Pilih kategori"
-          hint="Budget hanya menghitung pengeluaran nyata — transfer dan setoran tabungan diabaikan."
-        />
-        <FormSelect
-          label="Bulan"
-          control={form.control}
-          name="month"
-          options={monthOptions(month, defaultMonth)}
-          placeholder="Pilih bulan"
-        />
-        <FormAmount label="Batas anggaran" control={form.control} name="limitAmount" />
-
-        <div className="rounded-xl bg-brand-soft/60 px-3 py-2 text-[13px] text-ink">
-          <span className="text-muted">Pengeluaran tercatat pada {formatMonthLabel(month)}: </span>
-          <strong className="tabular font-extrabold">{formatIDR(spent)}</strong>
+      {wrapCard ? (
+        <Card as="section" className="flex flex-col gap-3">
+          {formFields}
+          {actionsMode === "inline" ? inFlowActions : null}
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {formFields}
+          {actionsMode === "inline" ? inFlowActions : null}
         </div>
-      </Card>
+      )}
 
-      <StickyActions>
-        <Button
-          variant="secondary"
-          block
-          onClick={() => (onCancel ? onCancel() : router.back())}
-          disabled={form.formState.isSubmitting}
-        >
-          Batal
-        </Button>
-        <Button type="submit" block disabled={form.formState.isSubmitting}>
-          {mode === "create" ? "Simpan anggaran" : "Simpan perubahan"}
-        </Button>
-      </StickyActions>
+      {actionsMode === "sticky" ? (
+        <StickyActions>
+          <Button
+            variant="secondary"
+            block
+            type="button"
+            onClick={() => (onCancel ? onCancel() : router.back())}
+            disabled={form.formState.isSubmitting}
+          >
+            Batal
+          </Button>
+          <Button type="submit" block disabled={form.formState.isSubmitting}>
+            {mode === "create" ? "Simpan anggaran" : "Simpan perubahan"}
+          </Button>
+        </StickyActions>
+      ) : null}
     </form>
   );
 }

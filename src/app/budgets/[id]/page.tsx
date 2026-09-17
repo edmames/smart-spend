@@ -152,6 +152,8 @@ function BudgetDetail({ id }: { id: string }) {
             mode="edit"
             budget={budget}
             defaultMonth={budget.month}
+            actionsMode="inline"
+            wrapCard={true}
             onCancel={() => setEditing(false)}
             onSuccess={() => setEditing(false)}
           />
