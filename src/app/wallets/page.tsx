@@ -21,7 +21,7 @@ export default function WalletsPage() {
         actions={
           <LinkButton href="/wallets/new" size="sm">
             <Plus className="h-4 w-4" aria-hidden />
-            Dompet
+            Tambah
           </LinkButton>
         }
       />
@@ -45,7 +45,7 @@ function WalletsContent({ showArchived, onToggleArchived }: { showArchived: bool
       <EmptyState
         icon={<Wallet className="h-7 w-7" />}
         title="Belum ada dompet"
-        description="Dompet adalah tempat uang berada: tunai, rekening bank, atau e-wallet. Buat satu dulu untuk mulai mencatat."
+        description="Dompet adalah tempat uang berada: tunai, rekening bank, atau e-wallet. Transaksi yang butuh dompet sumber atau tujuan belum bisa dicatat sebelum ada dompet."
         action={
           <LinkButton href="/wallets/new" size="md">
             <Plus className="h-4 w-4" aria-hidden />

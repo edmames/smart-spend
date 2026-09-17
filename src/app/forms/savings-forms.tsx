@@ -5,7 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { amountOf, savingsTargetFormSchema, transactionFormSchema, type SavingsTargetFormValues, type TransactionFormValues } from "@/app/forms/schemas";
 import { FormAmount, FormDate, FormNote, FormSelect, FormText } from "@/app/forms/fields";
-import { Button, Card } from "@/components/ui/layout";
+import { Badge, Button, Card, StickyActions } from "@/components/ui/layout";
 import { useSmartSpendStore } from "@/app/store";
 import { getTodayCalendarDate } from "@/domain/calendar";
 import { formatIDR } from "@/domain/money";
@@ -42,13 +42,21 @@ export function SavingsTargetForm({ mode, target }: { mode: "create" | "edit"; t
     };
     const result =
       mode === "create" ? createSavingsTarget(payload) : updateSavingsTarget(target?.id as string, payload);
-    if (!result.ok) return;
+    if (!result.ok) {
+      form.setError("root", { message: result.error.message, type: "validate" });
+      return;
+    }
     router.push(mode === "create" ? "/savings" : `/savings/${target?.id ?? ""}`);
   });
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
       <Card as="section" className="flex flex-col gap-3">
+        {form.formState.errors.root?.message ? (
+          <p role="alert" className="rounded-lg bg-expense-soft px-3 py-2 text-[12.5px] font-semibold text-expense">
+            {form.formState.errors.root.message}
+          </p>
+        ) : null}
         <FormText
           label="Nama target"
           control={form.control}
@@ -73,14 +81,14 @@ export function SavingsTargetForm({ mode, target }: { mode: "create" | "edit"; t
         <FormNote control={form.control} name="note" maxLength={200} />
       </Card>
 
-      <div className="sticky bottom-[calc(var(--nav-height)+0.75rem)] z-10 flex gap-2 pt-1">
+      <StickyActions>
         <Button variant="secondary" block onClick={() => router.back()}>
           Batal
         </Button>
         <Button type="submit" block disabled={form.formState.isSubmitting}>
           {mode === "create" ? "Simpan target" : "Simpan perubahan"}
         </Button>
-      </div>
+      </StickyActions>
     </form>
   );
 }
@@ -138,7 +146,10 @@ export function SavingsMovementForm({
       paymentMethod: null,
       note: typeof values.note === "string" && values.note.trim() ? values.note.trim() : null,
     });
-    if (!result.ok) return;
+    if (!result.ok) {
+      form.setError("root", { message: result.error.message, type: "validate" });
+      return;
+    }
     router.push(`/savings/${target.id}`);
   });
 
@@ -155,12 +166,26 @@ export function SavingsMovementForm({
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
       <Card as="section" className="flex flex-col gap-3">
-        <FormAmount
-          label={isDeposit ? "Setor ke tabungan" : "Tarik dari tabungan"}
-          control={form.control}
-          name="amount"
-          hint={available}
-        />
+        {form.formState.errors.root?.message ? (
+          <p role="alert" className="rounded-lg bg-expense-soft px-3 py-2 text-[12.5px] font-semibold text-expense">
+            {form.formState.errors.root.message}
+          </p>
+        ) : null}
+
+        {/* Which goal is moved, and in which direction — never ambiguous. */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[12px] font-bold uppercase tracking-wide text-savings">
+              {isDeposit ? "Setor ke tabungan" : "Tarik dari tabungan"}
+            </p>
+            <p className="mt-0.5 truncate text-[15px] font-bold text-ink">{target.name}</p>
+          </div>
+          <Badge tone="savings" className="shrink-0">
+            {isDeposit ? "Bukan pengeluaran" : "Bukan pemasukan"}
+          </Badge>
+        </div>
+
+        <FormAmount control={form.control} name="amount" hint={available} />
         <FormSelect
           label={isDeposit ? "Dari dompet" : "Ke dompet"}
           control={form.control}
@@ -172,20 +197,20 @@ export function SavingsMovementForm({
         <FormNote control={form.control} name="note" />
       </Card>
 
-      <p className="px-1 text-[12px] leading-relaxed text-muted">
+      <p className="px-1 pt-0.5 pb-2 text-[12px] leading-relaxed text-muted">
         {isDeposit
-          ? "Setoran memindahkan uang dari dompet ke tabungan. Total uang Anda tidak berubah dan ini tidak dihitung sebagai pengeluaran."
-          : "Penarikan memindahkan uang dari tabungan ke dompet. Total uang Anda tidak berubah dan ini tidak dihitung sebagai pemasukan."}
+          ? "Uang berpindah dari dompet ke tabungan: Total Uang tidak berubah, dan ini tidak dihitung sebagai pengeluaran bulan ini."
+          : "Uang berpindah dari tabungan ke dompet: Total Uang tidak berubah, dan ini tidak dihitung sebagai pemasukan bulan ini."}
       </p>
 
-      <div className="sticky bottom-[calc(var(--nav-height)+0.75rem)] z-10 flex gap-2 pt-1">
+      <StickyActions>
         <Button variant="secondary" block onClick={() => router.push(`/savings/${target.id}`)}>
           Batal
         </Button>
         <Button type="submit" block disabled={form.formState.isSubmitting || walletOptions.length === 0}>
           {isDeposit ? "Setor sekarang" : "Tarik sekarang"}
         </Button>
-      </div>
+      </StickyActions>
     </form>
   );
 }

@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { Banknote, Building2, Smartphone } from "lucide-react";
 import { AmountInput, Field, Segmented, TextInput } from "@/components/ui/forms";
-import { Button, Card } from "@/components/ui/layout";
+import { Button, Card, StickyActions } from "@/components/ui/layout";
 import { amountOf, walletFormSchema, type WalletFormValues } from "@/app/forms/schemas";
 import { formatIDR } from "@/domain/money";
 import { WALLET_TYPES, WALLET_TYPE_LABELS, type Transaction, type Wallet, type WalletType } from "@/domain/models";
@@ -63,7 +63,12 @@ export function WalletForm({ mode, wallet }: { mode: "create" | "edit"; wallet?:
     const result =
       mode === "create" ? createWallet(payload) : updateWallet({ id: wallet?.id as string, ...payload });
 
-    if (!result.ok) return;
+    if (!result.ok) {
+      // The domain's reason belongs on the form, not only in a toast that the user
+      // may have already scrolled past.
+      form.setError("root", { message: result.error.message, type: "validate" });
+      return;
+    }
     router.push(mode === "create" ? "/wallets" : `/wallets/${wallet?.id ?? ""}`);
   });
 
@@ -72,12 +77,18 @@ export function WalletForm({ mode, wallet }: { mode: "create" | "edit"; wallet?:
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
       <Card as="section" className="flex flex-col gap-3">
+        {form.formState.errors.root?.message ? (
+          <p role="alert" className="rounded-lg bg-expense-soft px-3 py-2 text-[12.5px] font-semibold text-expense">
+            {form.formState.errors.root.message}
+          </p>
+        ) : null}
+
         <Field label="Nama dompet" error={form.formState.errors.name?.message} htmlFor="wallet-name">
-          <input
+          <TextInput
             id="wallet-name"
-            className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
             placeholder="cth: BCA, GoPay, Dompet"
             autoComplete="off"
+            aria-invalid={Boolean(form.formState.errors.name)}
             {...form.register("name")}
           />
         </Field>
@@ -127,19 +138,19 @@ export function WalletForm({ mode, wallet }: { mode: "create" | "edit"; wallet?:
           <AmountInput control={form.control} name="openingBalance" id="wallet-opening" />
         </Field>
         <p className="text-[13px] text-muted">
-          Saldo dompet saat ini (diturunkan dari ledger):{" "}
+          Saldo saat ini:{" "}
           <strong className="text-ink tabular">{formatIDR(balanceOf(wallet, transactions))}</strong>
         </p>
       </Card>
 
-      <div className="sticky bottom-[calc(var(--nav-height)+0.75rem)] z-10 flex gap-2 pt-1">
+      <StickyActions>
         <Button variant="secondary" block onClick={() => router.back()} disabled={form.formState.isSubmitting}>
           Batal
         </Button>
         <Button type="submit" block disabled={form.formState.isSubmitting}>
           {mode === "create" ? "Simpan dompet" : "Simpan perubahan"}
         </Button>
-      </div>
+      </StickyActions>
     </form>
   );
 }

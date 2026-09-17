@@ -9,6 +9,7 @@ import { HydrationGate } from "@/components/ui/hydration-gate";
 import { useSmartSpendStore } from "@/app/store";
 import { formatIDR } from "@/domain/money";
 import { calculateSavingsBalance } from "@/domain/ledger";
+import { calculateSavingsProgress } from "@/domain/selectors";
 
 export default function SavingsPage() {
   const [showArchived, setShowArchived] = useState(false);
@@ -38,6 +39,7 @@ function SavingsContent({ showArchived, onToggleArchived }: { showArchived: bool
   const active = data.savingsTargets.filter((target) => target.archivedAt == null);
   const archived = data.savingsTargets.filter((target) => target.archivedAt != null);
   const totalSaved = active.reduce((sum, target) => sum + calculateSavingsBalance(data.transactions, target.id), 0);
+  const reached = active.filter((target) => calculateSavingsProgress(target, data.transactions).goalReached).length;
 
   if (data.savingsTargets.length === 0) {
     return (
@@ -68,7 +70,10 @@ function SavingsContent({ showArchived, onToggleArchived }: { showArchived: bool
             di Total Uang, tanpa dihitung ganda.
           </p>
         </div>
-        <Badge tone="savings">{active.length} target</Badge>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <Badge tone="savings">{active.length} target</Badge>
+          {reached > 0 ? <Badge tone="income">{reached} tercapai</Badge> : null}
+        </div>
       </Card>
 
       <SectionTitle
