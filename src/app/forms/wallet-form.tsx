@@ -138,7 +138,7 @@ export function WalletForm({ mode, wallet }: { mode: "create" | "edit"; wallet?:
           <AmountInput control={form.control} name="openingBalance" id="wallet-opening" />
         </Field>
         <p className="text-[13px] text-muted">
-          Saldo dompet saat ini (diturunkan dari ledger):{" "}
+          Saldo saat ini:{" "}
           <strong className="text-ink tabular">{formatIDR(balanceOf(wallet, transactions))}</strong>
         </p>
       </Card>

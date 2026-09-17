@@ -64,33 +64,42 @@ function WalletDetail({ id }: { id: string }) {
         </div>
 
         <div>
-          <p className="text-[11.5px] font-bold uppercase tracking-wide text-muted">Saldo (dihitung dari ledger)</p>
+          <p className="text-[11.5px] font-bold uppercase tracking-wide text-muted">Saldo saat ini</p>
           <p className="text-[26px] font-extrabold tabular text-ink">{formatIDR(balance)}</p>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 pt-0.5">
-          <LinkButton href={`/transactions/new?wallet=${wallet.id}`} size="sm" variant="soft">
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Transaksi
-          </LinkButton>
-          <LinkButton href={`/wallets/${wallet.id}/edit`} size="sm" variant="secondary">
-            <Pencil className="h-3.5 w-3.5" aria-hidden />
-            Ubah
-          </LinkButton>
-          {!archived ? (
-            <Button size="sm" variant="secondary" onClick={() => setAsk("archive")}>
-              <Archive className="h-3.5 w-3.5" aria-hidden />
-              Arsipkan
+        <div className="flex flex-col gap-2 pt-0.5">
+          <div className="grid grid-cols-2 gap-2">
+            <LinkButton href={`/transactions/new?wallet=${wallet.id}`} size="sm" variant="soft" block>
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Transaksi
+            </LinkButton>
+            <LinkButton href={`/wallets/${wallet.id}/edit`} size="sm" variant="secondary" block>
+              <Pencil className="h-3.5 w-3.5" aria-hidden />
+              Ubah
+            </LinkButton>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {!archived ? (
+              <Button size="sm" variant="secondary" block onClick={() => setAsk("archive")}>
+                <Archive className="h-3.5 w-3.5" aria-hidden />
+                Arsipkan
+              </Button>
+            ) : (
+              <Button size="sm" variant="secondary" block onClick={() => void restoreWallet(wallet.id)}>
+                <ArchiveRestore className="h-3.5 w-3.5" aria-hidden />
+                Pulihkan
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={historyCount === 0 ? "ghost" : "secondary"}
+              block
+              onClick={() => setAsk("delete")}
+            >
+              Hapus
             </Button>
-          ) : (
-            <Button size="sm" variant="secondary" onClick={() => void restoreWallet(wallet.id)}>
-              <ArchiveRestore className="h-3.5 w-3.5" aria-hidden />
-              Pulihkan
-            </Button>
-          )}
-          <Button size="sm" variant={historyCount === 0 ? "ghost" : "secondary"} onClick={() => setAsk("delete")}>
-            Hapus
-          </Button>
+          </div>
         </div>
 
         <p className="text-[11.5px] leading-relaxed text-muted">

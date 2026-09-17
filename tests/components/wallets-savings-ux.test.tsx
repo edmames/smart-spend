@@ -160,6 +160,9 @@ describe("Dompet (wallets) Phase 2D UX", () => {
 
     // the opening balance is shown because it is derived from the ledger record
     expect(screen.getByLabelText(/Saldo awal/i)).toHaveValue("1.000.000");
+    // the current balance copy uses natural user-facing phrasing without jargon
+    expect(screen.getByText(/saldo saat ini/i)).toBeInTheDocument();
+    expect(screen.queryByText(/diturunkan dari ledger/i)).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/Nama dompet/i), { target: { value: "BCA Utama" } });
     fireEvent.click(screen.getByRole("button", { name: "Simpan perubahan" }));
@@ -170,6 +173,23 @@ describe("Dompet (wallets) Phase 2D UX", () => {
     expect(data.wallets[0]?.name).toBe("BCA Utama");
     expect(data.transactions.filter((t) => t.type === "opening_balance")).toHaveLength(1);
     expect(calculateWalletBalance(data.transactions, "bca")).toBe(1_000_000);
+  });
+
+  it("exposes all four wallet actions (transaksi, ubah, arsipkan, hapus) with natural copy", () => {
+    setData(walletAndGoal());
+    render(<WalletDetailPage />);
+
+    // Primary row actions
+    expect(screen.getByRole("link", { name: /transaksi/i })).toHaveAttribute("href", "/transactions/new?wallet=bca");
+    expect(screen.getByRole("link", { name: /ubah/i })).toHaveAttribute("href", "/wallets/bca/edit");
+
+    // Secondary management row actions
+    expect(screen.getByRole("button", { name: /arsipkan/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /hapus/i })).toBeInTheDocument();
+
+    // Natural Bahasa Indonesia balance copy without "ledger" jargon
+    expect(screen.getByText(/saldo saat ini/i)).toBeInTheDocument();
+    expect(screen.queryByText(/dihitung dari ledger/i)).not.toBeInTheDocument();
   });
 
   it("surfaces the ledger's refusal instead of deleting a wallet that is still referenced", async () => {
@@ -321,6 +341,7 @@ describe("Tabungan (savings) Phase 2D UX", () => {
     // the movement is anchored to the goal and labelled as internal, never an expense
     expect(screen.getByText("Setor ke tabungan")).toBeInTheDocument();
     expect(screen.getByText("Bukan pengeluaran")).toBeInTheDocument();
+    expect(screen.getByText(/Uang berpindah dari dompet ke tabungan/i)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/Nominal/i), { target: { value: "250.000" } });
     fireEvent.click(screen.getByRole("button", { name: "Setor sekarang" }));
@@ -367,6 +388,7 @@ describe("Tabungan (savings) Phase 2D UX", () => {
 
     expect(screen.getByText("Tarik dari tabungan")).toBeInTheDocument();
     expect(screen.getByText("Bukan pemasukan")).toBeInTheDocument();
+    expect(screen.getByText(/Uang berpindah dari tabungan ke dompet/i)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText(/Nominal/i), { target: { value: "100.000" } });
     fireEvent.click(screen.getByRole("button", { name: "Tarik sekarang" }));

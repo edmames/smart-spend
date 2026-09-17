@@ -197,7 +197,7 @@ export function SavingsMovementForm({
         <FormNote control={form.control} name="note" />
       </Card>
 
-      <p className="px-1 text-[12px] leading-relaxed text-muted">
+      <p className="px-1 pt-0.5 pb-2 text-[12px] leading-relaxed text-muted">
         {isDeposit
           ? "Uang berpindah dari dompet ke tabungan: Total Uang tidak berubah, dan ini tidak dihitung sebagai pengeluaran bulan ini."
           : "Uang berpindah dari tabungan ke dompet: Total Uang tidak berubah, dan ini tidak dihitung sebagai pemasukan bulan ini."}

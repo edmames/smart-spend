@@ -119,7 +119,7 @@ export function StickyActions({ children, className }: { children: ReactNode; cl
   return (
     <div
       className={cn(
-        "sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom)+0.75rem)] z-10 flex gap-2 rounded-xl border border-line bg-surface p-1.5 shadow-sm",
+        "sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom)+0.75rem)] z-10 mt-2 flex gap-2 rounded-xl border border-line bg-surface p-1.5 shadow-sm",
         className,
       )}
     >
