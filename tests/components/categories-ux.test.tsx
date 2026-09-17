@@ -145,6 +145,12 @@ describe("Phase 2H categories UX and navigation", () => {
     expect(categoriesLink).toBeUndefined();
   });
 
+  it("/categories back link points to /transactions, not /more", () => {
+    render(<CategoriesPage />);
+    const backLink = screen.getByRole("link", { name: /kembali/i });
+    expect(backLink.getAttribute("href")).toBe("/transactions");
+  });
+
   it("does NOT expose internal category IDs in the category list", () => {
     render(<CategoriesPage />);
     // Should show category label and type, but NOT "ID makanan" or similar

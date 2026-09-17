@@ -528,3 +528,26 @@ describe("Budgets UX — Budget Detail View", () => {
     expect(pengaturanTab?.match("/more")).toBe(true);
   });
 });
+
+describe("Budget back navigation (Phase 2I)", () => {
+  beforeEach(() => {
+    setData(
+      emptyData({
+        wallets: [makeWallet("w1", { name: "BCA" })],
+        budgets: [makeBudget("makanan", "2026-09", 500_000)],
+      }),
+    );
+  });
+
+  it("main /budgets page has no back link (it is a primary nav destination)", () => {
+    render(<BudgetsPage />);
+    // No back arrow link should be present in the header
+    expect(screen.queryByRole("link", { name: /kembali/i })).not.toBeInTheDocument();
+  });
+
+  it("budget detail page back link points to /budgets, not /more", () => {
+    render(<BudgetDetailPage />);
+    const backLink = screen.getByRole("link", { name: /kembali/i });
+    expect(backLink.getAttribute("href")).toBe("/budgets");
+  });
+});

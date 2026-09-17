@@ -530,6 +530,13 @@ describe("Reports UI — Navigation", () => {
     expect(NAV_ITEMS.map((i) => i.label)).not.toContain("Laporan");
   });
 
+  it("Reports back link points to / (Beranda context)", () => {
+    render(<ReportsPage />);
+    const backLink = screen.queryByRole("link", { name: /kembali/i });
+    expect(backLink).not.toBeNull();
+    expect(backLink?.getAttribute("href")).toBe("/");
+  });
+
   it("Dashboard CashFlowCard has Lihat laporan link to /reports", () => {
     // This is tested separately in settings-phase2i.test.tsx
     // Reports page backHref is / (Beranda context)
