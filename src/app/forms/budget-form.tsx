@@ -1,24 +1,37 @@
 "use client";
 
-import { currentMonthKey, shiftMonthKey, formatMonthLabel } from "@/domain/selectors";
 import { isMonthKey } from "@/domain/calendar";
+import { currentMonthKey, formatMonthLabel, shiftMonthKey, calculateCategorySpend } from "@/domain/selectors";
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { amountOf, budgetFormSchema, type BudgetFormValues } from "@/app/forms/schemas";
 import { FormAmount, FormSelect } from "@/app/forms/fields";
-import { Button, Card } from "@/components/ui/layout";
+import { Button, Card, StickyActions } from "@/components/ui/layout";
 import { useSmartSpendStore } from "@/app/store";
 import { EXPENSE_CATEGORIES } from "@/domain/categories";
 import { formatIDR } from "@/domain/money";
-import { calculateCategorySpend } from "@/domain/selectors";
 import type { Budget } from "@/domain/models";
 
 /**
  * Budget form: `category + month + limit`, exactly one limit per category/month
  * (the store rejects duplicates before writing).
  */
-export function BudgetForm({ mode, budget, defaultMonth }: { mode: "create" | "edit"; budget?: Budget; defaultMonth: string }) {
+export function BudgetForm({
+  mode,
+  budget,
+  defaultMonth,
+  defaultCategory,
+  onCancel,
+  onSuccess,
+}: {
+  mode: "create" | "edit";
+  budget?: Budget;
+  defaultMonth: string;
+  defaultCategory?: string;
+  onCancel?: () => void;
+  onSuccess?: (budget: Budget) => void;
+}) {
   const router = useRouter();
   const data = useSmartSpendStore((state) => state.data);
   const createBudget = useSmartSpendStore((state) => state.createBudget);
@@ -27,14 +40,14 @@ export function BudgetForm({ mode, budget, defaultMonth }: { mode: "create" | "e
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetFormSchema),
     defaultValues: {
-      categoryId: budget?.categoryId ?? "",
+      categoryId: budget?.categoryId ?? defaultCategory ?? "",
       month: budget?.month ?? defaultMonth,
       limitAmount: budget?.limitAmount ?? null,
     },
   });
 
   const categoryId = useWatch({ control: form.control, name: "categoryId" });
-  const month = useWatch({ control: form.control, name: "month" });
+  const month = useWatch({ control: form.control, name: "month" }) || defaultMonth;
   const spent =
     typeof categoryId === "string" && typeof month === "string"
       ? calculateCategorySpend(data.transactions, categoryId, month)
@@ -47,15 +60,41 @@ export function BudgetForm({ mode, budget, defaultMonth }: { mode: "create" | "e
       limitAmount: amountOf(values.limitAmount),
     };
     const result = mode === "create" ? createBudget(payload) : updateBudget(budget?.id as string, payload);
-    if (!result.ok) return;
-    router.push(`/budgets?month=${payload.month}`);
+    if (!result.ok) {
+      form.setError("root", { message: result.error.message, type: "validate" });
+      return;
+    }
+    if (onSuccess && result.value) {
+      onSuccess(result.value);
+    } else {
+      router.push(`/budgets?month=${payload.month}`);
+    }
   });
 
-  const categoryOptions = EXPENSE_CATEGORIES.map((category) => ({ value: category.id, label: category.label }));
+  const existingInMonth = new Set(
+    data.budgets
+      .filter((b) => b.month === month && (mode === "create" || b.id !== budget?.id))
+      .map((b) => b.categoryId),
+  );
+
+  const categoryOptions = EXPENSE_CATEGORIES.map((category) => {
+    const alreadyExists = existingInMonth.has(category.id);
+    return {
+      value: category.id,
+      label: alreadyExists ? `${category.label} (sudah ada)` : category.label,
+      disabled: alreadyExists,
+    };
+  });
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
       <Card as="section" className="flex flex-col gap-3">
+        {form.formState.errors.root?.message ? (
+          <p role="alert" className="rounded-lg bg-expense-soft px-3 py-2 text-[12.5px] font-semibold text-expense">
+            {form.formState.errors.root.message}
+          </p>
+        ) : null}
+
         <FormSelect
           label="Kategori pengeluaran"
           control={form.control}
@@ -68,31 +107,36 @@ export function BudgetForm({ mode, budget, defaultMonth }: { mode: "create" | "e
           label="Bulan"
           control={form.control}
           name="month"
-          options={monthOptions(month)}
+          options={monthOptions(month, defaultMonth)}
           placeholder="Pilih bulan"
         />
-        <FormAmount label="Batas budget" control={form.control} name="limitAmount" />
+        <FormAmount label="Batas anggaran" control={form.control} name="limitAmount" />
 
         <div className="rounded-xl bg-brand-soft/60 px-3 py-2 text-[13px] text-ink">
-          <span className="text-muted">Pengeluaran tercatat bulan ini: </span>
-          <strong className="tabular">{formatIDR(spent)}</strong>
+          <span className="text-muted">Pengeluaran tercatat pada {formatMonthLabel(month)}: </span>
+          <strong className="tabular font-extrabold">{formatIDR(spent)}</strong>
         </div>
       </Card>
 
-      <div className="sticky bottom-[calc(var(--nav-height)+0.75rem)] z-10 flex gap-2 pt-1">
-        <Button variant="secondary" block onClick={() => router.back()}>
+      <StickyActions>
+        <Button
+          variant="secondary"
+          block
+          onClick={() => (onCancel ? onCancel() : router.back())}
+          disabled={form.formState.isSubmitting}
+        >
           Batal
         </Button>
         <Button type="submit" block disabled={form.formState.isSubmitting}>
-          {mode === "create" ? "Simpan budget" : "Simpan perubahan"}
+          {mode === "create" ? "Simpan anggaran" : "Simpan perubahan"}
         </Button>
-      </div>
+      </StickyActions>
     </form>
   );
 }
 
-function monthOptions(selected: unknown): { value: string; label: string }[] {
-  const base = currentMonthKey();
+function monthOptions(selected: unknown, baseMonth: string): { value: string; label: string }[] {
+  const base = isMonthKey(baseMonth) ? baseMonth : currentMonthKey();
   const list: { value: string; label: string }[] = [];
   for (let offset = -6; offset <= 6; offset += 1) {
     const value = shiftMonthKey(base, offset);
@@ -102,7 +146,7 @@ function monthOptions(selected: unknown): { value: string; label: string }[] {
     });
   }
   if (typeof selected === "string" && isMonthKey(selected) && !list.some((option) => option.value === selected)) {
-    list.unshift({ value: selected, label: selected });
+    list.unshift({ value: selected, label: formatMonthLabel(selected) });
   }
   return list;
 }
