@@ -245,8 +245,7 @@ export function ResetCard() {
         <h2 className="text-[14.5px] font-bold text-ink">Hapus Semua Data</h2>
         <p className="text-[12.5px] leading-relaxed text-muted">
           Menghapus seluruh data keuangan dari perangkat ini dan mengembalikan aplikasi ke kondisi kosong (0 dompet, 0
-          transaksi, 0 tabungan, 0 budget, 0 kategori pengguna). Preferensi seperti tema tidak dihapus. Tidak bisa
-          dibatalkan.
+          transaksi, 0 tabungan, 0 budget). Preferensi akan dikembalikan ke nilai awal. Tidak bisa dibatalkan.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">

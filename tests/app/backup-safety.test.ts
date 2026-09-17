@@ -304,13 +304,135 @@ describe("RESET / Hapus semua data safety", () => {
     expect(adapter.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it("reset retains app preferences (theme) per V1 preferred behaviour", () => {
+  it("reset returns app preferences to defaults (not retained from current state)", () => {
     install(seeded());
     // seeded() has theme: "dark"
     expect(useSmartSpendStore.getState().data.settings?.theme).toBe("dark");
     useSmartSpendStore.getState().resetAllData();
-    // Preferences are restored to defaults (not deleted / not arbitrary user values)
+    // Preferences are reset to DEFAULT_SETTINGS (implementation-defined reset semantics)
     const after = useSmartSpendStore.getState().data.settings;
     expect(after).toEqual(DEFAULT_SETTINGS);
+    expect(after?.theme).toBe(DEFAULT_SETTINGS.theme);
+  });
+});
+
+/**
+ * Phase 2J — Adversarial backup QA.
+ *
+ * Every rejected candidate MUST leave current application state exactly as it
+ * was: no partial mutation, no clearing of storage, no partial migration commit.
+ */
+describe("ADVERSARIAL — every rejected candidate preserves current state", () => {
+  function rejectCase(label: string, input: unknown) {
+    it(`${label} — state unchanged`, () => {
+      configureRepository(createLocalStorageRepository(new MemoryStorageAdapter()));
+      const before = snapshot(seeded());
+      useSmartSpendStore.getState().resetStore(before);
+      useSmartSpendStore.setState({ hydration: "ready" });
+      const result = validateImportPayload(input);
+      expect(result.ok).toBe(false);
+      // store state untouched
+      expect(useSmartSpendStore.getState().data).toEqual(before);
+    });
+  }
+
+  const base = () => JSON.parse(serializeExport(seeded(), NOW)) as Record<string, unknown>;
+
+  rejectCase("empty file", "");
+  rejectCase("whitespace-only file", "   \n  ");
+  rejectCase("malformed JSON", "{ not json");
+  rejectCase("JSON array instead of object", []);
+  rejectCase("unrelated valid JSON", { hello: "world", count: 3 });
+  rejectCase("missing version", { wallets: [], transactions: [], savingsTargets: [], budgets: [], categories: [] });
+  rejectCase("impossible negative version", { version: -1, wallets: [], transactions: [], savingsTargets: [], budgets: [], categories: [] });
+  rejectCase("future version", { version: STORAGE_VERSION + 1, wallets: [], transactions: [], savingsTargets: [], budgets: [], categories: [] });
+  // Missing collections default to empty arrays — a valid empty backup.
+  // These are NOT rejections; they're valid candidates that pass validation.
+  // (Tested separately in the "valid candidates pass" block below.)
+  rejectCase("malformed settings (wrong currency)", (() => {
+    const r = base(); r.settings = { currency: "EUR", theme: "dark" }; return r;
+  })());
+  rejectCase("malformed categories (bad icon)", (() => {
+    const r = base(); (r.categories as Array<{ icon: string }>).forEach((c) => (c.icon = "not-an-icon")); return r;
+  })());
+  rejectCase("malformed categories (missing id)", (() => {
+    const r = base(); const cats = r.categories as Array<Record<string, unknown>>; delete cats[0]!.id; return r;
+  })());
+  rejectCase("duplicate wallet IDs", (() => {
+    const r = base(); const w = r.wallets as Array<Record<string, unknown>>; (r.wallets as Array<Record<string, unknown>>) = [{ ...w[0] }, { ...w[0] }]; return r;
+  })());
+  rejectCase("duplicate transaction IDs", (() => {
+    const r = base(); const t = r.transactions as Array<Record<string, unknown>>; (r.transactions as Array<Record<string, unknown>>) = [{ ...t[0] }, { ...t[0] }]; return r;
+  })());
+  rejectCase("dangling wallet reference", (() => {
+    const r = base(); (r.transactions as Array<Record<string, unknown>>).forEach((t) => { t.sourceWalletId = "missing"; t.destinationWalletId = null; t.savingsTargetId = null; t.categoryId = null; }); return r;
+  })());
+  rejectCase("invalid monetary value (fractional amount)", (() => {
+    const r = base(); (r.transactions as Array<{ amount: number }>).forEach((t) => (t.amount = 12.5)); return r;
+  })());
+  rejectCase("invalid monetary value (exceeds max)", (() => {
+    const r = base(); r.transactions = [{ ...(r.transactions as Array<Record<string, unknown>>)[0], amount: 10_000_000_000 }]; return r;
+  })());
+  rejectCase("invalid transaction date (not YYYY-MM-DD)", (() => {
+    const r = base(); (r.transactions as Array<{ date: string }>).forEach((t) => (t.date = "2026/08/10")); return r;
+  })());
+  rejectCase("invalid exportedAt (not ISO)", (() => {
+    const r = base(); r.exportedAt = "not-a-date"; return r;
+  })());
+  rejectCase("negative historical balance (overspend)", (() => {
+    const r = base(); r.transactions = [...(r.transactions as unknown[])]; const txs = r.transactions as Array<Record<string, unknown>>;
+    txs[1] = { id: "overspend", type: "expense", amount: 50_000_000, sourceWalletId: "bca", categoryId: "makanan", date: on(2026, 8, 10), createdAt: at(2026, 8, 10, 8), updatedAt: at(2026, 8, 10, 8) }; return r;
+  })());
+  rejectCase("future-dated transaction (beyond today)", (() => {
+    const r = base(); (r.transactions as Array<{ date: string }>).forEach((t) => (t.date = "2099-12-31")); return r;
+  })());
+  rejectCase("duplicate budget (same category+month)", (() => {
+    const r = base();
+    const budget = { id: "budget-makanan-2026-08", categoryId: "makanan", month: "2026-08", limitAmount: 500_000, createdAt: at(2026, 8, 1, 8), updatedAt: at(2026, 8, 1, 8) };
+    r.budgets = [budget, budget]; return r;
+  })());
+  rejectCase("dangling savings target reference", (() => {
+    const r = base(); (r.transactions as Array<{ savingsTargetId: string | null }>).forEach((t) => { t.savingsTargetId = "missing"; }); return r;
+  })());
+  rejectCase("malformed transaction type (unknown)", (() => {
+    const r = base(); (r.transactions as Array<{ type: string }>).forEach((t) => (t.type = "superincome")); return r;
+  })());
+
+  describe("valid candidates pass", () => {
+    it("current valid backup is accepted", () => {
+      expect(validateImportPayload(base()).ok).toBe(true);
+    });
+    it("missing wallets collection defaults to empty and is accepted (with empty transactions)", () => {
+      const r = base(); delete r.wallets; r.transactions = [];
+      expect(validateImportPayload(r).ok).toBe(true);
+    });
+    it("missing transactions collection defaults to empty and is accepted", () => {
+      const r = base(); delete r.transactions;
+      expect(validateImportPayload(r).ok).toBe(true);
+    });
+    it("valid exportedAt (ISO UTC) is accepted and surfaced in preview", () => {
+      const result = validateImportPayload({ ...base(), exportedAt: NOW.toISOString() });
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.preview.exportedAt).toBe(NOW.toISOString());
+    });
+    it("legacy supported v2 backup is accepted and migrated", () => {
+      expect(
+        validateImportPayload({
+          appName: "SmartSpend",
+          schemaVersion: 2,
+          exportedAt: at(2026, 9, 1),
+          version: 2,
+          wallets: [{ id: "bca", name: "BCA", type: "bank", provider: null, createdAt: at(2026, 8, 1), updatedAt: at(2026, 8, 1), archivedAt: null }],
+          transactions: [{
+            id: "income", type: "income", amount: 1_000_000, destinationWalletId: "bca", categoryId: "gaji",
+            date: on(2026, 8, 2), createdAt: at(2026, 8, 2), updatedAt: at(2026, 8, 2),
+          }],
+          savingsTargets: [],
+          budgets: [],
+          categories: [{ id: "gaji", label: "Gaji", type: "income", icon: "salary", color: "slate", createdAt: at(2026, 1, 1), updatedAt: at(2026, 1, 1), archivedAt: null }],
+          settings: { currency: "IDR", theme: "light", firstTransactionType: "income", hideBalances: false },
+        }).ok,
+      ).toBe(true);
+    });
   });
 });

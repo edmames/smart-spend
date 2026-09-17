@@ -1,4 +1,4 @@
-import { validateLedgerChronology } from "@/domain/validation";
+import { validateLedgerChronology, validateTransaction } from "@/domain/validation";
 import { calendarDateFromInstant } from "@/domain/calendar";
 import type { Budget, Category, SavingsTarget, Transaction, Wallet } from "@/domain/models";
 import { budgetKey, DATE_TIME_SCHEMA } from "@/domain/models";
@@ -200,6 +200,38 @@ export function validateImportPayload(raw: unknown): ImportValidation {
     issues.push({ path: "transactions", message: chronology.error?.message ?? "Riwayat saldo menjadi negatif." });
   }
 
+  // Per-transaction domain semantics (future dates, category/type agreement,
+  // archived wallets, payment-method validity). The chronology check above only
+  // covers running balances — a future-dated or category-mismatched transaction
+  // would otherwise slip through. This reuses the *same* validateTransaction used
+  // by create/edit, so import enforces identical rules to live entry.
+  const now = new Date();
+  for (const [index, transaction] of data.transactions.entries()) {
+    const check = validateTransaction(transaction, {
+      wallets: data.wallets,
+      savingsTargets: data.savingsTargets,
+      categories: data.categories,
+      transactions: data.transactions,
+      now,
+    });
+    if (!check.ok) {
+      for (const error of check.error.allErrors ?? [check.error]) {
+        issues.push({
+          path: `transactions[${index}]${error.field ? `.${error.field}` : ""}`,
+          message: error.message,
+        });
+      }
+    }
+  }
+
+  const exportedAt =
+    typeof source.exportedAt === "string" && DATE_TIME_SCHEMA.safeParse(source.exportedAt).success
+      ? source.exportedAt
+      : null;
+  if (source.exportedAt !== undefined && exportedAt === null) {
+    issues.push({ path: "exportedAt", message: "exportedAt harus berupa string ISO UTC yang valid." });
+  }
+
   if (issues.length > 0) {
     return { ok: false, message: "File lolos parsing tapi gagal validasi — seluruh import ditolak.", issues: issues.slice(0, 25) };
   }
@@ -207,11 +239,6 @@ export function validateImportPayload(raw: unknown): ImportValidation {
   const warnings: string[] = [];
   if (data.wallets.length === 0) warnings.push("File tidak berisi dompet sama sekali.");
   if (data.transactions.length === 0) warnings.push("File tidak berisi transaksi.");
-
-  const exportedAt =
-    typeof source.exportedAt === "string" && DATE_TIME_SCHEMA.safeParse(source.exportedAt).success
-      ? source.exportedAt
-      : null;
 
   return { ok: true, data, preview: previewOf(data, exportedAt), warnings };
 }
