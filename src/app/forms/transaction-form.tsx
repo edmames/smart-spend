@@ -12,7 +12,7 @@ import {
 } from "@/app/forms/schemas";
 import { FormAmount, FormDate, FormNote, FormPaymentMethod, FormSelect } from "@/app/forms/fields";
 import { Segmented } from "@/components/ui/forms";
-import { Button, Card } from "@/components/ui/layout";
+import { Badge, Button, Card } from "@/components/ui/layout";
 import { ALL_CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/domain/categories";
 import type { SelectOption } from "@/components/ui/forms";
 import { useSmartSpendStore } from "@/app/store";
@@ -31,11 +31,20 @@ import type { Transaction, TransactionType } from "@/domain/models";
  */
 
 const KIND_LABELS: Record<TransactionFormKind, string> = {
-  income: "Masuk",
-  expense: "Keluar",
+  income: "Pemasukan",
+  expense: "Pengeluaran",
   transfer: "Transfer",
   savings_deposit: "Setor tabungan",
   savings_withdrawal: "Tarik tabungan",
+  opening_balance: "Saldo awal",
+};
+
+const KIND_SHORT_LABELS: Record<TransactionFormKind, string> = {
+  income: "Masuk",
+  expense: "Keluar",
+  transfer: "Transfer",
+  savings_deposit: "Setor",
+  savings_withdrawal: "Tarik",
   opening_balance: "Saldo awal",
 };
 
@@ -108,6 +117,7 @@ export function TransactionForm({
     selectedKind === "savings_withdrawal" ||
     selectedKind === "opening_balance";
   const showSavingsTarget = selectedKind === "savings_deposit" || selectedKind === "savings_withdrawal";
+  const showPaymentMethod = selectedKind === "income" || selectedKind === "expense";
 
   const walletOptions = buildWalletOptions(data.wallets, data.transactions);
   const savingsOptions = data.savingsTargets
@@ -141,7 +151,7 @@ export function TransactionForm({
       amount: amountOf(values.amount),
       date: values.date,
       note: values.note || null,
-      paymentMethod: values.paymentMethod ?? null,
+      paymentMethod: showPaymentMethod ? (values.paymentMethod ?? null) : null,
       categoryId: showCategory ? normalise(values.categoryId) : null,
       sourceWalletId: showSourceWallet ? normalise(values.sourceWalletId) : null,
       destinationWalletId: showDestinationWallet ? normalise(values.destinationWalletId) : null,
@@ -185,8 +195,9 @@ export function TransactionForm({
               if (next === "income" || next === "savings_withdrawal") form.setValue("sourceWalletId", "");
               if (next === "expense" || next === "transfer" || next === "savings_deposit") form.setValue("destinationWalletId", "");
               if (next !== "savings_deposit" && next !== "savings_withdrawal") form.setValue("savingsTargetId", fixedSavingsTargetId ?? "");
+              if (next !== "income" && next !== "expense") form.setValue("paymentMethod", null);
             }}
-            options={USER_TRANSACTION_FORM_KINDS.map((value) => ({ value, label: KIND_LABELS[value] }))}
+            options={USER_TRANSACTION_FORM_KINDS.map((value) => ({ value, label: KIND_SHORT_LABELS[value] }))}
           />
         </Card>
       ) : (
@@ -198,7 +209,24 @@ export function TransactionForm({
         </Card>
       )}
 
+      <Card as="section" className="flex flex-col gap-2.5 bg-brand-soft/40">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Jenis transaksi</p>
+            <h2 className="mt-0.5 text-[15px] font-bold text-ink">{KIND_LABELS[selectedKind]}</h2>
+          </div>
+          <Badge tone={toneForKind(selectedKind)}>{MOVEMENT_LABELS[selectedKind]}</Badge>
+        </div>
+        <p className="text-[12.5px] leading-relaxed text-muted">{KIND_NOTES[selectedKind]}</p>
+      </Card>
+
       <Card as="section" className="flex flex-col gap-3">
+        {form.formState.errors.root?.message ? (
+          <p className="rounded-lg bg-expense-soft px-3 py-2 text-[12.5px] font-semibold text-expense">
+            {form.formState.errors.root.message}
+          </p>
+        ) : null}
+
         <FormAmount control={form.control} name="amount" hint={availableHint} />
 
         {showCategory ? (
@@ -243,14 +271,10 @@ export function TransactionForm({
 
         <FormDate control={form.control} name="date" />
 
-        {selectedKind === "transfer" ? null : <FormPaymentMethod control={form.control} />}
+        {showPaymentMethod ? <FormPaymentMethod control={form.control} /> : null}
 
-        <FormNote control={form.control} />
+        <FormNote control={form.control} label="Deskripsi" placeholder="cth: makan siang, gaji, kirim ke Cash" />
       </Card>
-
-      <p className="px-1 text-[12px] leading-relaxed text-muted">
-        {KIND_NOTES[selectedKind]}
-      </p>
 
       <div className="sticky bottom-[calc(var(--nav-height)+0.75rem)] z-10 flex gap-2 pt-1">
         <Button variant="secondary" block onClick={() => router.back()} disabled={form.formState.isSubmitting}>
@@ -272,6 +296,23 @@ const KIND_NOTES: Record<TransactionFormKind, string> = {
   savings_withdrawal: "Penarikan memindahkan uang ke dompet — ini bukan pemasukan.",
   opening_balance: "Saldo awal menambah uang total tapi tidak dihitung sebagai pemasukan bulanan.",
 };
+
+const MOVEMENT_LABELS: Record<TransactionFormKind, string> = {
+  income: "Uang masuk",
+  expense: "Uang keluar",
+  transfer: "Internal",
+  savings_deposit: "Internal",
+  savings_withdrawal: "Internal",
+  opening_balance: "Saldo awal",
+};
+
+function toneForKind(kind: TransactionFormKind): "income" | "expense" | "savings" | "brand" | "neutral" {
+  if (kind === "income" || kind === "opening_balance") return "income";
+  if (kind === "expense") return "expense";
+  if (kind === "savings_deposit" || kind === "savings_withdrawal") return "savings";
+  if (kind === "transfer") return "brand";
+  return "neutral";
+}
 
 function normalise(value: string | null | undefined): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;

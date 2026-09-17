@@ -88,6 +88,11 @@ export function TransactionRow({ transaction, href }: { transaction: Transaction
           : meta?.color,
   );
   const kind = transactionSignKind(transaction);
+  const typeTone = toneFor(transaction.type);
+  const title =
+    transaction.note && transaction.note.trim().length > 0
+      ? transaction.note
+      : meta?.label ?? TRANSACTION_TYPE_LABELS[transaction.type];
   const body = (
     <>
       <span
@@ -101,11 +106,7 @@ export function TransactionRow({ transaction, href }: { transaction: Transaction
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="flex min-w-0 items-baseline justify-between gap-2">
-          <span className="truncate text-[14px] font-semibold text-ink">
-            {transaction.note && transaction.note.trim().length > 0
-              ? transaction.note
-              : meta?.label ?? TRANSACTION_TYPE_LABELS[transaction.type]}
-          </span>
+          <span className="truncate text-[14px] font-semibold text-ink">{title}</span>
           <span
             className={cn(
               "shrink-0 text-[14px] font-bold tabular",
@@ -118,17 +119,15 @@ export function TransactionRow({ transaction, href }: { transaction: Transaction
           </span>
         </span>
         <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] text-muted">
+          <Badge tone={typeTone} className="shrink-0">
+            {TRANSACTION_TYPE_LABELS[transaction.type]}
+          </Badge>
           <span className="truncate">{describeTransaction(transaction, context)}</span>
           <span aria-hidden>·</span>
           <span className="shrink-0 tabular">{formatTransactionDate(transaction.date)}</span>
           {transaction.paymentMethod ? (
             <Badge tone="neutral" className="ml-auto">
               {PAYMENT_METHOD_LABELS[transaction.paymentMethod]}
-            </Badge>
-          ) : null}
-          {transaction.type === "transfer" || transaction.type === "savings_deposit" || transaction.type === "savings_withdrawal" ? (
-            <Badge tone={transaction.type === "transfer" ? "brand" : "savings"}>
-              {TRANSACTION_TYPE_LABELS[transaction.type]}
             </Badge>
           ) : null}
         </span>
@@ -174,4 +173,12 @@ export function groupByDay(transactions: readonly Transaction[]): { key: string;
 
 export function MoneyAmount({ amount, className }: { amount: number; className?: string }) {
   return <span className={cn("tabular", className)}>{formatIDR(amount)}</span>;
+}
+
+function toneFor(type: Transaction["type"]): "income" | "expense" | "savings" | "brand" | "neutral" {
+  if (type === "income" || type === "opening_balance") return "income";
+  if (type === "expense") return "expense";
+  if (type === "savings_deposit" || type === "savings_withdrawal") return "savings";
+  if (type === "transfer") return "brand";
+  return "neutral";
 }

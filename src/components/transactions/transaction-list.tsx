@@ -3,7 +3,7 @@
 import { formatCalendarDate } from "@/domain/calendar";
 
 import { useMemo, useState } from "react";
-import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
+import { Filter, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import { formatIDR } from "@/domain/money";
 import { Badge, Button, Card, EmptyState } from "@/components/ui/layout";
 import { ChipToggle } from "@/components/ui/forms";
@@ -90,20 +90,29 @@ export function TransactionList({
   emptyTitle = "Belum ada transaksi",
   emptyDescription = "Catat pemasukan, pengeluaran, atau transfer pertama Anda.",
   dense,
+  action,
 }: {
   items: ReturnType<typeof useFilteredTransactions>;
   emptyTitle?: string;
   emptyDescription?: string;
   dense?: boolean;
+  action?: React.ReactNode;
 }) {
   if (items.length === 0) {
-    return <EmptyState title={emptyTitle} description={emptyDescription} />;
+    return <EmptyState title={emptyTitle} description={emptyDescription} action={action} />;
   }
 
   const groups = groupByDayPreservingOrder(items);
+  const totalIn = items.reduce((sum, item) => (item.type === "income" ? sum + item.amount : sum), 0);
+  const totalOut = items.reduce((sum, item) => (item.type === "expense" ? sum + item.amount : sum), 0);
 
   return (
     <div className={cn("flex flex-col gap-3", dense && "gap-2")}>
+      <div className="grid grid-cols-3 gap-1.5">
+        <ListStat label="Catatan" value={`${items.length}`} />
+        <ListStat label="Masuk" value={formatIDR(totalIn)} tone="income" />
+        <ListStat label="Keluar" value={formatIDR(totalOut)} tone="expense" />
+      </div>
       {groups.map((group) => (
         <section key={group.key} aria-label={`Transaksi ${group.label}`}>
           <div className="flex items-baseline justify-between gap-2 px-1 pb-1">
@@ -123,6 +132,31 @@ export function TransactionList({
           </Card>
         </section>
       ))}
+    </div>
+  );
+}
+
+function ListStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "income" | "expense";
+}) {
+  return (
+    <div className="rounded-lg border border-line bg-surface px-2 py-1.5">
+      <p className="truncate text-[10.5px] font-semibold uppercase tracking-wide text-muted">{label}</p>
+      <p
+        className={cn(
+          "mt-0.5 truncate text-[12px] font-bold tabular text-ink",
+          tone === "income" && "text-income",
+          tone === "expense" && "text-expense",
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -167,6 +201,10 @@ export function TransactionFilterPanel({
 }) {
   const [open, setOpen] = useState(false);
   const active = countActiveFilters(filter);
+  const clearAll = () => {
+    onChange(EMPTY_FILTER);
+    onReset?.();
+  };
 
   type MultiKey = "types" | "categoryIds" | "walletIds" | "paymentMethods";
 
@@ -202,7 +240,11 @@ export function TransactionFilterPanel({
             </button>
           ) : null}
         </div>
-        <Button variant={open || active > 0 ? "soft" : "secondary"} onClick={() => setOpen((value) => !value)}>
+        <Button
+          variant={open || active > 0 ? "soft" : "secondary"}
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+        >
           <Filter className="h-4 w-4" aria-hidden />
           <span>Filter</span>
           {active > 0 ? (
@@ -223,12 +265,10 @@ export function TransactionFilterPanel({
             {active > 0 ? (
               <button
                 type="button"
-                onClick={() => {
-                  onChange({ ...EMPTY_FILTER, query: filter.query });
-                  onReset?.();
-                }}
-                className="text-[12px] font-semibold text-brand hover:underline"
+                onClick={clearAll}
+                className="inline-flex min-h-8 items-center gap-1 text-[12px] font-semibold text-brand hover:underline"
               >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
                 Reset filter
               </button>
             ) : null}
@@ -303,7 +343,7 @@ export function TransactionFilterPanel({
         </Card>
       ) : null}
 
-      {active > 0 && !open ? (
+      {active > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5 px-0.5">
           {filter.period !== "all" ? <Badge tone="brand">{PERIOD_LABEL[filter.period]}</Badge> : null}
           {filter.types.map((type) => (
@@ -321,6 +361,9 @@ export function TransactionFilterPanel({
               {walletOptions.find((option) => option.value === id)?.label ?? id}
             </Badge>
           ))}
+          <button type="button" onClick={clearAll} className="text-[12px] font-semibold text-brand hover:underline">
+            Reset
+          </button>
         </div>
       ) : null}
     </div>
