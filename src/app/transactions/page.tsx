@@ -57,10 +57,15 @@ export default function TransactionsPage() {
         title="Transaksi"
         subtitle={totalCount > 0 ? `${totalCount} catatan tersimpan di perangkat ini` : "Semua pergerakan uang ada di sini"}
         actions={
-          <LinkButton href="/transactions/new" size="sm">
-            <Plus className="h-4 w-4" aria-hidden />
-            Catat
-          </LinkButton>
+          <>
+            <LinkButton href="/transactions/new" size="sm">
+              <Plus className="h-4 w-4" aria-hidden />
+              Catat
+            </LinkButton>
+            <LinkButton href="/categories" size="sm" variant="secondary">
+              Kelola kategori
+            </LinkButton>
+          </>
         }
       />
       <div className="flex flex-col gap-3">

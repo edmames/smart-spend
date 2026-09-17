@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -244,13 +245,18 @@ export function TransactionForm({
         <FormAmount control={form.control} name="amount" hint={availableHint} />
 
         {showCategory ? (
-          <FormSelect
-            label="Kategori"
-            control={form.control}
-            name="categoryId"
-            options={categoryOptions}
-            placeholder="Pilih kategori"
-          />
+          <div className="flex flex-col gap-1.5">
+            <FormSelect
+              label="Kategori"
+              control={form.control}
+              name="categoryId"
+              options={categoryOptions}
+              placeholder="Pilih kategori"
+            />
+            <Link href="/categories" className="text-[12px] font-semibold text-brand hover:underline">
+              Kelola kategori
+            </Link>
+          </div>
         ) : null}
 
         {showSourceWallet ? (

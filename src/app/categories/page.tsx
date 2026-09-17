@@ -62,13 +62,15 @@ export default function CategoriesPage() {
           </Card>
 
           {creating ? <CategoryForm mode="create" type={type} onDone={closeForm} /> : null}
-          {editing ? <CategoryForm mode="edit" type={editing.type} category={editing} onDone={closeForm} /> : null}
+          {editing ? <CategoryForm mode="edit" category={editing} onDone={closeForm} /> : null}
 
           <SectionTitle
             action={
-              <Button size="sm" variant="ghost" onClick={() => setShowArchived((value) => !value)}>
-                {showArchived ? "Sembunyikan arsip" : "Tampilkan arsip"}
-              </Button>
+              archived.length > 0 ? (
+                <Button size="sm" variant="ghost" onClick={() => setShowArchived((value) => !value)}>
+                  {showArchived ? "Sembunyikan arsip" : `Tampilkan arsip (${archived.length})`}
+                </Button>
+              ) : null
             }
           >
             {TYPE_LABEL[type]} aktif
@@ -85,14 +87,13 @@ export default function CategoriesPage() {
             <CategoryList categories={active} onEdit={(category) => { setEditing(category); setCreating(false); }} />
           )}
 
-          {showArchived ? (
+          {showArchived && archived.length > 0 ? (
             <>
               <SectionTitle>Diarsipkan</SectionTitle>
-              {archived.length === 0 ? (
-                <EmptyState title="Tidak ada kategori arsip" description="Kategori yang diarsipkan akan muncul di sini." />
-              ) : (
-                <CategoryList categories={archived} archived onEdit={(category) => { setEditing(category); setCreating(false); }} />
-              )}
+              <CategoryList categories={archived} archived onEdit={(category) => { setEditing(category); setCreating(false); }} />
+              <p className="px-1 text-[11.5px] leading-relaxed text-muted">
+                Kategori terarsip tidak muncul di pilihan transaksi baru, tapi seluruh riwayatnya tetap tercatat.
+              </p>
             </>
           ) : null}
         </div>
@@ -109,29 +110,45 @@ function CategoryList({ categories, archived = false, onEdit }: { categories: Ca
     <Card as="section" padded={false} className="divide-y divide-line/70 px-3">
       {categories.map((category) => {
         const Icon = getCategoryIconById(category.icon);
+        const isArchived = category.archivedAt != null;
         return (
           <div key={category.id} className="flex items-center gap-3 py-2.5">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-canvas text-ink">
+            <span className={cn(
+              "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
+              isArchived && "opacity-60",
+            )}>
               <Icon className="h-5 w-5" aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-[14px] font-bold text-ink">{category.label}</span>
-                {archived ? <Badge tone="neutral">arsip</Badge> : null}
+                {isArchived ? <Badge tone="neutral">arsip</Badge> : null}
               </span>
-              <span className="text-[11.5px] text-muted">{TYPE_LABEL[category.type]} · ID {category.id}</span>
+              <span className="text-[11.5px] text-muted">{TYPE_LABEL[category.type]}</span>
             </span>
-            <Button size="sm" variant="secondary" onClick={() => onEdit(category)} aria-label={`Ubah kategori ${category.label}`}>
-              Ubah
-            </Button>
             {archived ? (
-              <Button size="sm" variant="soft" onClick={() => restoreCategory(category.id)} aria-label={`Pulihkan kategori ${category.label}`}>
+              <Button
+                size="sm"
+                variant="soft"
+                onClick={() => void restoreCategory(category.id)}
+                aria-label={`Pulihkan kategori ${category.label}`}
+              >
                 <RotateCcw className="h-4 w-4" aria-hidden />
               </Button>
             ) : (
-              <Button size="sm" variant="ghost" onClick={() => archiveCategory(category.id)} aria-label={`Arsipkan kategori ${category.label}`}>
-                <Archive className="h-4 w-4" aria-hidden />
-              </Button>
+              <>
+                <Button size="sm" variant="secondary" onClick={() => onEdit(category)} aria-label={`Ubah kategori ${category.label}`}>
+                  Ubah
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => void archiveCategory(category.id)}
+                  aria-label={`Arsipkan kategori ${category.label}`}
+                >
+                  <Archive className="h-4 w-4" aria-hidden />
+                </Button>
+              </>
             )}
           </div>
         );
@@ -140,18 +157,20 @@ function CategoryList({ categories, archived = false, onEdit }: { categories: Ca
   );
 }
 
-function CategoryForm({ mode, type, category, onDone }: { mode: Mode; type: CategoryType; category?: Category; onDone: () => void }) {
+function CategoryForm({ mode, type, category, onDone }: { mode: Mode; type?: CategoryType; category?: Category; onDone: () => void }) {
   const createCategory = useSmartSpendStore((state) => state.createCategory);
   const updateCategory = useSmartSpendStore((state) => state.updateCategory);
   const [label, setLabel] = useState(category?.label ?? "");
   const [icon, setIcon] = useState(category?.icon ?? CATEGORY_ICON_OPTIONS[0]?.id ?? "dots");
   const [error, setError] = useState<string | null>(null);
 
+  const targetType = type ?? category?.type ?? "expense";
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
     const result = mode === "create"
-      ? createCategory({ label, type, icon })
+      ? createCategory({ label, type: targetType, icon })
       : updateCategory(category?.id as string, { label, icon });
     if (!result.ok) {
       setError(result.error.message);
@@ -164,17 +183,17 @@ function CategoryForm({ mode, type, category, onDone }: { mode: Mode; type: Cate
     <Card as="section" className="flex flex-col gap-3">
       <div>
         <h2 className="text-[14px] font-bold text-ink">{mode === "create" ? "Tambah kategori" : "Ubah kategori"}</h2>
-        <p className="mt-0.5 text-[12.5px] text-muted">Jenis {TYPE_LABEL[type].toLowerCase()} tidak dapat diubah setelah kategori dibuat.</p>
+        <p className="mt-0.5 text-[12.5px] text-muted">Jenis {TYPE_LABEL[targetType].toLowerCase()} tidak dapat diubah setelah kategori dibuat.</p>
       </div>
       <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
-        {error ? <p role="alert" className="rounded-lg bg-expense-soft px-3 py-2 text-[12.5px] font-semibold text-expense">{error}</p> : null}
+        {error ? <p role="alert" className="rounded-lg bg-warning-soft/50 px-3 py-2 text-[12.5px] font-semibold text-warning">{error}</p> : null}
         <label className="flex flex-col gap-1.5 text-sm font-medium text-ink">
           Nama kategori
           <input
             value={label}
             onChange={(event) => setLabel(event.target.value)}
             maxLength={40}
-            className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            className="w-full rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px] text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="cth: Kopi, Freelance"
           />
         </label>
@@ -182,7 +201,7 @@ function CategoryForm({ mode, type, category, onDone }: { mode: Mode; type: Cate
           <legend className="text-sm font-medium text-ink">Icon</legend>
           <div className="grid grid-cols-4 gap-2">
             {CATEGORY_ICON_OPTIONS.map((option) => {
-              const Icon = getCategoryIconById(option.id);
+              const IconComponent = getCategoryIconById(option.id);
               const selected = icon === option.id;
               return (
                 <button
@@ -193,10 +212,10 @@ function CategoryForm({ mode, type, category, onDone }: { mode: Mode; type: Cate
                   aria-pressed={selected}
                   className={cn(
                     "flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[10.5px] font-semibold transition",
-                    selected ? "border-brand bg-brand-soft text-brand-strong ring-2 ring-brand/20" : "border-line bg-surface text-muted hover:border-brand/50 hover:text-ink",
+                    selected ? "border-brand bg-brand text-primary-foreground" : "border-line bg-surface text-muted hover:border-brand/50 hover:text-ink",
                   )}
                 >
-                  <Icon className="h-4 w-4" aria-hidden />
+                  <IconComponent className="h-4 w-4" aria-hidden />
                   <span className="max-w-full truncate">{option.label}</span>
                 </button>
               );

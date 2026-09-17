@@ -16,7 +16,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Beranda", href: "/", icon: LayoutDashboard, match: (p) => p === "/" },
-  { label: "Transaksi", href: "/transactions", icon: Receipt, match: (p) => p.startsWith("/transactions") },
+  { label: "Transaksi", href: "/transactions", icon: Receipt, match: (p) => p.startsWith("/transactions") || p.startsWith("/categories") },
   {
     label: "Dompet",
     href: "/wallets",
@@ -28,7 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Lainnya",
     href: "/more",
     icon: MoreHorizontal,
-    match: (p) => p.startsWith("/more") || p.startsWith("/reports") || p.startsWith("/settings") || p.startsWith("/categories"),
+    match: (p) => p.startsWith("/more") || p.startsWith("/reports") || p.startsWith("/settings"),
   },
 ];
 

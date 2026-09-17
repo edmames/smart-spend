@@ -130,13 +130,26 @@ describe("Phase 2H category persistence and model", () => {
 describe("Phase 2H categories UX and navigation", () => {
   beforeEach(() => setData());
 
-  it("keeps bottom navigation unchanged and exposes categories from Lainnya", () => {
+  it("keeps bottom navigation unchanged at 5 items and /categories activates Transaksi tab", () => {
     expect(NAV_ITEMS.map((item) => item.label)).toEqual(["Beranda", "Transaksi", "Dompet", "Budget", "Lainnya"]);
     expect(NAV_ITEMS.some((item) => item.href === "/categories")).toBe(false);
-    expect(NAV_ITEMS.find((item) => item.label === "Lainnya")?.match("/categories")).toBe(true);
+    // /categories should match Transaksi tab (now includes /categories)
+    expect(NAV_ITEMS.find((item) => item.label === "Lainnya")?.match("/categories")).toBe(false);
+    expect(NAV_ITEMS.find((item) => item.label === "Transaksi")?.match("/categories")).toBe(true);
+  });
 
+  it("does NOT expose Kategori from Lainnya page", () => {
     render(<MorePage />);
-    expect(screen.getAllByRole("link").find((link) => link.getAttribute("href") === "/categories")).toHaveTextContent("Kategori");
+    expect(screen.queryByRole("link", { name: /Kategori/i })).toBeNull();
+  });
+
+  it("does NOT expose internal category IDs in the category list", () => {
+    render(<CategoriesPage />);
+    // Should show category label and type, but NOT "ID makanan" or similar
+    expect(screen.getByText("Makanan")).toBeInTheDocument();
+    expect(screen.getByText("Pengeluaran")).toBeInTheDocument();
+    // Ensure no ID text exists in the rendered output
+    expect(screen.queryByText(/ID \w+/)).toBeNull();
   });
 
   it("renders categories, creates custom categories, edits icon/name, and archives/restores", async () => {
