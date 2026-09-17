@@ -108,6 +108,26 @@ export function Card({
   );
 }
 
+/**
+ * The form action tray used by every editor (create + edit, all features).
+ *
+ * Inset, rounded and bordered on purpose: a full-bleed strip sitting flush on the
+ * fixed bottom navigation reads as a *second* navigation bar. The offset clears
+ * the nav and its safe-area padding.
+ */
+export function StickyActions({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        "sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom)+0.75rem)] z-10 flex gap-2 rounded-xl border border-line bg-surface p-1.5 shadow-sm",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function SectionTitle({
   children,
   action,

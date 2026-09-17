@@ -12,7 +12,7 @@ import {
 } from "@/app/forms/schemas";
 import { FormAmount, FormDate, FormNote, FormPaymentMethod, FormSelect } from "@/app/forms/fields";
 import { Segmented } from "@/components/ui/forms";
-import { Badge, Button, Card } from "@/components/ui/layout";
+import { Badge, Button, Card, StickyActions } from "@/components/ui/layout";
 import { ALL_CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/domain/categories";
 import type { SelectOption } from "@/components/ui/forms";
 import { useSmartSpendStore } from "@/app/store";
@@ -284,14 +284,11 @@ export function TransactionForm({
       </Card>
 
       {/*
-        A floating tray, not a full-bleed strip: inset, rounded and bordered so it does
-        not read as a second navigation bar above the real one. Its offset clears the
-        fixed nav *and* the safe area under it. Batal never saves: in edit mode it asks
-        the detail screen to drop the draft (the header's "Tutup" is the same exit, for
-        when the user is near the top of the form), and in create mode it leaves the
-        page the way the user arrived.
+        Batal never saves: in edit mode it asks the detail screen to drop the draft (the
+        header's "Tutup" is the same exit, for when the user is near the top of the
+        form), and in create mode it leaves the page the way the user arrived.
       */}
-      <div className="sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom)+0.75rem)] z-10 flex gap-2 rounded-xl border border-line bg-surface p-1.5 shadow-sm">
+      <StickyActions>
         <Button
           variant="secondary"
           block
@@ -303,7 +300,7 @@ export function TransactionForm({
         <Button type="submit" block disabled={form.formState.isSubmitting}>
           {mode === "create" ? "Simpan transaksi" : "Simpan perubahan"}
         </Button>
-      </div>
+      </StickyActions>
     </form>
   );
 }

@@ -3,7 +3,7 @@
 import { formatCalendarDate } from "@/domain/calendar";
 
 import { useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Pencil, PiggyBank } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Pencil, PiggyBank, Plus } from "lucide-react";
 import { Badge, Button, Card, EmptyState, LinkButton, PageHeader, ProgressBar, SectionTitle } from "@/components/ui/layout";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HydrationGate } from "@/components/ui/hydration-gate";
@@ -113,21 +113,21 @@ function SavingsDetail({ id }: { id: string }) {
             Target terarsip tidak bisa disetor/ditarik, tapi riwayat dan saldonya tetap dihitung.
           </p>
         ) : activeWallets.length === 0 ? (
-          <p className="rounded-xl bg-warning-soft px-3 py-2 text-[12px] text-warning">
-            Butuh minimal satu dompet aktif untuk menyetor atau menarik.{" "}
-            <LinkButton href="/wallets/new" size="sm" variant="secondary">
+          <div className="flex flex-col gap-2 rounded-xl bg-warning-soft px-3 py-2.5">
+            <p className="text-[12px] leading-relaxed text-warning">
+              Butuh minimal satu dompet aktif untuk menyetor atau menarik tabungan.
+            </p>
+            <LinkButton href="/wallets/new" size="sm" variant="secondary" className="self-start">
+              <Plus className="h-4 w-4" aria-hidden />
               Buat dompet
             </LinkButton>
-          </p>
+          </div>
         ) : null}
       </Card>
 
-      {mode === "deposit" || mode === "withdrawal" ? (
-        <>
-          <SectionTitle>{mode === "deposit" ? "Setor ke tabungan" : "Tarik dari tabungan"}</SectionTitle>
-          <SavingsMovementForm target={target} direction={mode} />
-        </>
-      ) : null}
+      {/* The movement form carries its own heading (goal + direction), so no second
+          section title is needed here. */}
+      {mode === "deposit" || mode === "withdrawal" ? <SavingsMovementForm target={target} direction={mode} /> : null}
 
       {mode === "edit" ? (
         <>

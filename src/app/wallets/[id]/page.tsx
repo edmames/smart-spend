@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore, Pencil, Plus } from "lucide-react";
+import { AlertTriangle, Archive, ArchiveRestore, Pencil, Plus } from "lucide-react";
 import { Badge, Button, Card, EmptyState, LinkButton, PageHeader, SectionTitle } from "@/components/ui/layout";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HydrationGate } from "@/components/ui/hydration-gate";
@@ -11,6 +11,7 @@ import { useSmartSpendStore } from "@/app/store";
 import { formatIDR } from "@/domain/money";
 import { calculateWalletBalance } from "@/domain/ledger";
 import { WALLET_TYPE_LABELS } from "@/domain/models";
+import { useRouter } from "next/navigation";
 import { EMPTY_FILTER, type TransactionFilterState } from "@/types";
 
 export default function WalletDetailPage() {
@@ -34,6 +35,8 @@ function WalletDetail({ id }: { id: string }) {
   const deleteWallet = useSmartSpendStore((state) => state.deleteWallet);
   const [filter, setFilter] = useState<TransactionFilterState>(EMPTY_FILTER);
   const [ask, setAsk] = useState<"archive" | "delete" | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const router = useRouter();
   const items = useFilteredTransactions(filter, { walletIds });
 
   if (!wallet) {
@@ -85,18 +88,28 @@ function WalletDetail({ id }: { id: string }) {
               Pulihkan
             </Button>
           )}
-          {historyCount === 0 ? (
-            <Button size="sm" variant="ghost" onClick={() => setAsk("delete")}>
-              Hapus
-            </Button>
-          ) : null}
+          <Button size="sm" variant={historyCount === 0 ? "ghost" : "secondary"} onClick={() => setAsk("delete")}>
+            Hapus
+          </Button>
         </div>
 
         <p className="text-[11.5px] leading-relaxed text-muted">
           {archived
             ? "Dompet ini tidak bisa dipilih untuk transaksi baru, tapi seluruh riwayatnya tetap dihitung."
-            : `Terpakai di ${historyCount} transaksi.`}
+            : historyCount > 0
+              ? `Terpakai di ${historyCount} transaksi — tidak bisa dihapus permanen, gunakan Arsipkan.`
+              : "Belum dipakai di transaksi mana pun."}
         </p>
+
+        {deleteError ? (
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-xl bg-expense-soft px-3 py-2 text-[12px] font-semibold text-expense"
+          >
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            {deleteError}
+          </p>
+        ) : null}
       </Card>
 
       <SectionTitle>Riwayat transaksi</SectionTitle>
@@ -129,9 +142,23 @@ function WalletDetail({ id }: { id: string }) {
       <ConfirmDialog
         open={ask === "delete"}
         title={`Hapus ${wallet.name}?`}
-        description="Dompet ini belum punya transaksi, jadi aman dihapus permanen."
+        description={
+          historyCount === 0
+            ? "Dompet ini belum punya transaksi, jadi aman dihapus permanen."
+            : `Dompet ini dipakai di ${historyCount} transaksi. Ledger menolak menghapus dompet yang masih dirujuk — pakai Arsipkan agar riwayat tetap utuh.`
+        }
         confirmLabel="Hapus"
-        onConfirm={() => void deleteWallet(wallet.id)}
+        onConfirm={() => {
+          const result = deleteWallet(wallet.id);
+          setAsk(null);
+          if (result.ok) {
+            setDeleteError(null);
+            router.push("/wallets");
+            return;
+          }
+          // The refusal is the safety feature: show it instead of a dead button.
+          setDeleteError(result.error.message);
+        }}
         onClose={() => setAsk(null)}
       />
     </>
