@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Receipt } from "lucide-react";
-import { EmptyState, LinkButton, PageHeader } from "@/components/ui/layout";
+import { Plus, Receipt, RotateCcw } from "lucide-react";
+import { Button, EmptyState, LinkButton, PageHeader } from "@/components/ui/layout";
 import { HydrationGate } from "@/components/ui/hydration-gate";
 import {
+  countActiveFilters,
   TransactionFilterPanel,
   TransactionList,
   useFilteredTransactions,
@@ -39,10 +40,16 @@ export default function TransactionsPage() {
     setIgnoreDeepLink(true);
     router.replace("/transactions");
   };
+  const resetFilters = () => {
+    setBase(EMPTY_FILTER);
+    clearDeepLink();
+  };
 
   const walletOptions = useWalletOptions({ includeArchived: true });
   const items = useFilteredTransactions(filter);
   const totalCount = useSmartSpendStore((state) => state.data.transactions.length);
+  const activeFilters = countActiveFilters(filter);
+  const hasSearch = filter.query.trim().length > 0;
 
   return (
     <>
@@ -80,8 +87,20 @@ export default function TransactionsPage() {
               />
               <TransactionList
                 items={items}
-                emptyTitle="Tidak ada transaksi yang cocok"
-                emptyDescription="Coba ubah kata kunci atau reset filter."
+                emptyTitle={hasSearch ? "Pencarian tidak menemukan transaksi" : "Tidak ada transaksi yang cocok"}
+                emptyDescription={
+                  activeFilters > 0 || hasSearch
+                    ? "Ubah kata kunci atau reset filter untuk melihat catatan lain."
+                    : "Catatan baru akan muncul di sini setelah disimpan."
+                }
+                action={
+                  activeFilters > 0 || hasSearch ? (
+                    <Button variant="secondary" size="sm" onClick={resetFilters}>
+                      <RotateCcw className="h-4 w-4" aria-hidden />
+                      Reset pencarian
+                    </Button>
+                  ) : null
+                }
               />
             </>
           )}

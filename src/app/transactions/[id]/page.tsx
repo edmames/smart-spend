@@ -1,18 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Pencil, Trash2, X } from "lucide-react";
 import { Badge, Button, Card, EmptyState, PageHeader, SectionTitle } from "@/components/ui/layout";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HydrationGate } from "@/components/ui/hydration-gate";
 import { TransactionForm } from "@/app/forms/transaction-form";
-import { describeTransaction, formatTransactionDate } from "@/components/transactions/transaction-row";
+import {
+  describeTransaction,
+  formatTransactionDate,
+  TransactionIcon,
+  transactionSignKind,
+} from "@/components/transactions/transaction-row";
 import { useDescribeContext } from "@/components/transactions/transaction-row";
 import { useRouteId } from "@/lib/route-params";
 import { useSmartSpendStore } from "@/app/store";
 import { categoryLabel, TRANSACTION_TYPE_LABELS } from "@/domain/categories";
 import { PAYMENT_METHOD_LABELS } from "@/domain/models";
-import { formatIDR } from "@/domain/money";
+import { formatIDR, formatSignedIDR } from "@/domain/money";
 import { useRouter } from "next/navigation";
 
 export default function TransactionDetailPage() {
@@ -35,6 +40,12 @@ function TransactionDetail({ id }: { id: string }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [askDelete, setAskDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // One exit from edit mode, shared by the header's "Tutup" and the tray's "Batal":
+  // dropping the form discards the draft, so neither path can write to the ledger.
+  const startEditing = () => setEditing(true);
+  const cancelEditing = () => setEditing(false);
 
   if (!transaction) {
     return (
@@ -49,21 +60,44 @@ function TransactionDetail({ id }: { id: string }) {
     (value): value is string => typeof value === "string",
   );
   const archivedInvolved = wallets.filter((wallet) => involved.includes(wallet.id) && wallet.archivedAt != null);
+  const signKind = transactionSignKind(transaction);
+  const summary = describeTransaction(transaction, context);
 
   return (
     <>
       <Card as="section" className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-col gap-1">
-            <Badge tone={toneFor(transaction.type)}>{TRANSACTION_TYPE_LABELS[transaction.type]}</Badge>
-            <p className="text-[27px] font-extrabold leading-tight tabular text-ink">
-              {formatIDR(transaction.amount)}
-            </p>
+        {/*
+          Type/icon and actions share this row; the amount gets a row of its own below.
+          Nothing that renders money can therefore be squeezed under Ubah/Hapus on a
+          narrow phone — Rp9.999.999.999 widens its own row instead of colliding.
+        */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
+              <TransactionIcon transaction={transaction} className="h-5 w-5" />
+            </span>
+            <Badge tone={toneFor(transaction.type)} className="min-w-0">
+              {TRANSACTION_TYPE_LABELS[transaction.type]}
+            </Badge>
           </div>
           <div className="flex shrink-0 gap-1.5">
-            <Button size="sm" variant={editing ? "soft" : "secondary"} onClick={() => setEditing((value) => !value)}>
-              <Pencil className="h-3.5 w-3.5" aria-hidden />
-              {editing ? "Tutup" : "Ubah"}
+            <Button
+              size="sm"
+              variant={editing ? "soft" : "secondary"}
+              aria-pressed={editing}
+              onClick={() => (editing ? cancelEditing() : startEditing())}
+            >
+              {editing ? (
+                <>
+                  <X className="h-4 w-4" aria-hidden />
+                  Tutup
+                </>
+              ) : (
+                <>
+                  <Pencil className="h-3.5 w-3.5" aria-hidden />
+                  Ubah
+                </>
+              )}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setAskDelete(true)} aria-label="Hapus transaksi">
               <Trash2 className="h-4 w-4" />
@@ -71,8 +105,16 @@ function TransactionDetail({ id }: { id: string }) {
           </div>
         </div>
 
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="min-w-0 break-words text-[27px] font-extrabold leading-tight tabular text-ink">
+            {formatSignedIDR(transaction.amount, signKind)}
+          </p>
+          <p className="text-[13px] leading-snug text-muted">{summary}</p>
+        </div>
+
         <dl className="flex flex-col divide-y divide-line/70 text-[13px]">
-          <Row label="Uraian">{describeTransaction(transaction, context)}</Row>
+          <Row label="Jenis">{TRANSACTION_TYPE_LABELS[transaction.type]}</Row>
+          <Row label="Uraian">{summary}</Row>
           {transaction.categoryId ? <Row label="Kategori">{categoryLabel(transaction.categoryId)}</Row> : null}
           {transaction.paymentMethod ? (
             <Row label="Metode">{PAYMENT_METHOD_LABELS[transaction.paymentMethod]}</Row>
@@ -100,12 +142,19 @@ function TransactionDetail({ id }: { id: string }) {
             pemasukan/pengeluaran bulan ini.
           </p>
         ) : null}
+
+        {deleteError ? (
+          <p role="alert" className="flex items-start gap-2 rounded-xl bg-expense-soft px-3 py-2 text-[12px] font-semibold text-expense">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            {deleteError}
+          </p>
+        ) : null}
       </Card>
 
       {editing ? (
         <>
           <SectionTitle>Ubah transaksi</SectionTitle>
-          <TransactionForm mode="edit" transaction={transaction} />
+          <TransactionForm mode="edit" transaction={transaction} onCancel={cancelEditing} />
           <p className="px-1 text-[11.5px] leading-relaxed text-muted">
             Perubahan divalidasi terhadap seluruh riwayat (bukan hanya transaksi ini). Jika membuat saldo negatif di
             masa lalu, perubahan ditolak dan data lama tetap utuh.
@@ -118,18 +167,32 @@ function TransactionDetail({ id }: { id: string }) {
         title="Hapus transaksi ini?"
         description={
           <>
-            Semua saldo, ringkasan bulanan, dan pemakaian budget akan dihitung ulang setelah transaksi{" "}
-            {formatIDR(transaction.amount)} ini dihapus.
+            Anda akan menghapus <strong>{TRANSACTION_TYPE_LABELS[transaction.type]}</strong> sebesar{" "}
+            <strong>{formatIDR(transaction.amount)}</strong> pada {formatTransactionDate(transaction.date)}.
           </>
         }
+        requirePhrase="HAPUS"
         confirmLabel="Hapus"
+        cancelLabel="Batal"
         onConfirm={() => {
           const result = deleteTransaction(transaction.id);
-          setAskDelete(false);
-          if (result.ok) router.push("/transactions");
+          if (result.ok) {
+            setDeleteError(null);
+            router.push("/transactions");
+            return;
+          }
+          setDeleteError(result.error.message);
         }}
         onClose={() => setAskDelete(false)}
-      />
+      >
+        <div className="rounded-xl border border-line bg-elevated px-3 py-2">
+          <p className="text-[12px] font-semibold text-ink">{summary}</p>
+          <p className="mt-0.5 text-[11.5px] text-muted">
+            Saldo, ringkasan bulanan, dan pemakaian budget akan dihitung ulang. Jika riwayat menjadi tidak valid,
+            domain akan menolak penghapusan.
+          </p>
+        </div>
+      </ConfirmDialog>
     </>
   );
 }

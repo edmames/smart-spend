@@ -12,7 +12,7 @@ import {
 } from "@/app/forms/schemas";
 import { FormAmount, FormDate, FormNote, FormPaymentMethod, FormSelect } from "@/app/forms/fields";
 import { Segmented } from "@/components/ui/forms";
-import { Button, Card } from "@/components/ui/layout";
+import { Badge, Button, Card } from "@/components/ui/layout";
 import { ALL_CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/domain/categories";
 import type { SelectOption } from "@/components/ui/forms";
 import { useSmartSpendStore } from "@/app/store";
@@ -31,11 +31,20 @@ import type { Transaction, TransactionType } from "@/domain/models";
  */
 
 const KIND_LABELS: Record<TransactionFormKind, string> = {
-  income: "Masuk",
-  expense: "Keluar",
+  income: "Pemasukan",
+  expense: "Pengeluaran",
   transfer: "Transfer",
   savings_deposit: "Setor tabungan",
   savings_withdrawal: "Tarik tabungan",
+  opening_balance: "Saldo awal",
+};
+
+const KIND_SHORT_LABELS: Record<TransactionFormKind, string> = {
+  income: "Masuk",
+  expense: "Keluar",
+  transfer: "Transfer",
+  savings_deposit: "Setor",
+  savings_withdrawal: "Tarik",
   opening_balance: "Saldo awal",
 };
 
@@ -66,6 +75,7 @@ export function TransactionForm({
   lockKind = false,
   fixedSavingsTargetId,
   fixedSourceWalletId,
+  onCancel,
 }: {
   mode: TransactionFormMode;
   initialKind?: TransactionFormKind;
@@ -74,6 +84,12 @@ export function TransactionForm({
   fixedSavingsTargetId?: string;
   /** Presets "from wallet" when arriving from a wallet screen (still editable). */
   fixedSourceWalletId?: string;
+  /**
+   * Abandoning without saving. An edit screen owns a read-only view to return to, so
+   * it passes a handler that drops the draft form; creating a record has nowhere to
+   * return to, so "Batal" falls back to history.
+   */
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const data = useSmartSpendStore((state) => state.data);
@@ -108,6 +124,7 @@ export function TransactionForm({
     selectedKind === "savings_withdrawal" ||
     selectedKind === "opening_balance";
   const showSavingsTarget = selectedKind === "savings_deposit" || selectedKind === "savings_withdrawal";
+  const showPaymentMethod = selectedKind === "income" || selectedKind === "expense";
 
   const walletOptions = buildWalletOptions(data.wallets, data.transactions);
   const savingsOptions = data.savingsTargets
@@ -141,7 +158,7 @@ export function TransactionForm({
       amount: amountOf(values.amount),
       date: values.date,
       note: values.note || null,
-      paymentMethod: values.paymentMethod ?? null,
+      paymentMethod: showPaymentMethod ? (values.paymentMethod ?? null) : null,
       categoryId: showCategory ? normalise(values.categoryId) : null,
       sourceWalletId: showSourceWallet ? normalise(values.sourceWalletId) : null,
       destinationWalletId: showDestinationWallet ? normalise(values.destinationWalletId) : null,
@@ -172,11 +189,16 @@ export function TransactionForm({
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
       {!lockKind ? (
-        <Card as="section">
+        <Card as="section" className="flex flex-col gap-2.5">
+          {/*
+            One card for the picker *and* what the chosen type means. The five kinds wrap
+            3 + 2 instead of 2 + 2 + 1, so the block is a row shorter and Nominal sits
+            that much higher on the phone.
+          */}
           <Segmented<TransactionFormKind>
-            label="Jenis"
+            label="Jenis transaksi"
             value={selectedKind as TransactionFormKind}
-            columns={2}
+            columns={3}
             onChange={(next) => {
               form.setValue("kind", next, { shouldValidate: false });
               // References that cannot exist on the new kind are cleared so a
@@ -185,9 +207,16 @@ export function TransactionForm({
               if (next === "income" || next === "savings_withdrawal") form.setValue("sourceWalletId", "");
               if (next === "expense" || next === "transfer" || next === "savings_deposit") form.setValue("destinationWalletId", "");
               if (next !== "savings_deposit" && next !== "savings_withdrawal") form.setValue("savingsTargetId", fixedSavingsTargetId ?? "");
+              if (next !== "income" && next !== "expense") form.setValue("paymentMethod", null);
             }}
-            options={USER_TRANSACTION_FORM_KINDS.map((value) => ({ value, label: KIND_LABELS[value] }))}
+            options={USER_TRANSACTION_FORM_KINDS.map((value) => ({ value, label: KIND_SHORT_LABELS[value] }))}
           />
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[12.5px] leading-relaxed text-muted">{KIND_NOTES[selectedKind]}</p>
+            <Badge tone={toneForKind(selectedKind)} className="shrink-0">
+              {MOVEMENT_LABELS[selectedKind]}
+            </Badge>
+          </div>
         </Card>
       ) : (
         <Card as="section" className="flex items-center justify-between gap-2">
@@ -199,6 +228,12 @@ export function TransactionForm({
       )}
 
       <Card as="section" className="flex flex-col gap-3">
+        {form.formState.errors.root?.message ? (
+          <p className="rounded-lg bg-expense-soft px-3 py-2 text-[12.5px] font-semibold text-expense">
+            {form.formState.errors.root.message}
+          </p>
+        ) : null}
+
         <FormAmount control={form.control} name="amount" hint={availableHint} />
 
         {showCategory ? (
@@ -243,17 +278,26 @@ export function TransactionForm({
 
         <FormDate control={form.control} name="date" />
 
-        {selectedKind === "transfer" ? null : <FormPaymentMethod control={form.control} />}
+        {showPaymentMethod ? <FormPaymentMethod control={form.control} /> : null}
 
-        <FormNote control={form.control} />
+        <FormNote control={form.control} label="Deskripsi" placeholder="cth: makan siang, gaji, kirim ke Cash" />
       </Card>
 
-      <p className="px-1 text-[12px] leading-relaxed text-muted">
-        {KIND_NOTES[selectedKind]}
-      </p>
-
-      <div className="sticky bottom-[calc(var(--nav-height)+0.75rem)] z-10 flex gap-2 pt-1">
-        <Button variant="secondary" block onClick={() => router.back()} disabled={form.formState.isSubmitting}>
+      {/*
+        A floating tray, not a full-bleed strip: inset, rounded and bordered so it does
+        not read as a second navigation bar above the real one. Its offset clears the
+        fixed nav *and* the safe area under it. Batal never saves: in edit mode it asks
+        the detail screen to drop the draft (the header's "Tutup" is the same exit, for
+        when the user is near the top of the form), and in create mode it leaves the
+        page the way the user arrived.
+      */}
+      <div className="sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom)+0.75rem)] z-10 flex gap-2 rounded-xl border border-line bg-surface p-1.5 shadow-sm">
+        <Button
+          variant="secondary"
+          block
+          onClick={() => (onCancel ? onCancel() : router.back())}
+          disabled={form.formState.isSubmitting}
+        >
           Batal
         </Button>
         <Button type="submit" block disabled={form.formState.isSubmitting}>
@@ -272,6 +316,23 @@ const KIND_NOTES: Record<TransactionFormKind, string> = {
   savings_withdrawal: "Penarikan memindahkan uang ke dompet — ini bukan pemasukan.",
   opening_balance: "Saldo awal menambah uang total tapi tidak dihitung sebagai pemasukan bulanan.",
 };
+
+const MOVEMENT_LABELS: Record<TransactionFormKind, string> = {
+  income: "Uang masuk",
+  expense: "Uang keluar",
+  transfer: "Internal",
+  savings_deposit: "Internal",
+  savings_withdrawal: "Internal",
+  opening_balance: "Saldo awal",
+};
+
+function toneForKind(kind: TransactionFormKind): "income" | "expense" | "savings" | "brand" | "neutral" {
+  if (kind === "income" || kind === "opening_balance") return "income";
+  if (kind === "expense") return "expense";
+  if (kind === "savings_deposit" || kind === "savings_withdrawal") return "savings";
+  if (kind === "transfer") return "brand";
+  return "neutral";
+}
 
 function normalise(value: string | null | undefined): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;

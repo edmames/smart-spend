@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { PageHeader, Card } from "@/components/ui/layout";
+import { Plus, Wallet } from "lucide-react";
+import { PageHeader, Card, EmptyState, LinkButton } from "@/components/ui/layout";
 import { HydrationGate } from "@/components/ui/hydration-gate";
 import { TransactionForm } from "@/app/forms/transaction-form";
 import { readQueryParam } from "@/lib/route-params";
@@ -20,6 +21,7 @@ export default function NewTransactionPage() {
   const walletParam = readQueryParam("wallet");
   const savingsParam = readQueryParam("target");
   const wallets = useSmartSpendStore((state) => state.data.wallets);
+  const activeWallets = wallets.filter((wallet) => wallet.archivedAt == null);
   // Derived (not state): a deep link must never cause a second render pass.
   const preset = useMemo(() => {
     if (!walletParam) return null;
@@ -35,9 +37,23 @@ export default function NewTransactionPage() {
 
   return (
     <>
-      <PageHeader title="Catat transaksi" subtitle="Nominal selalu disimpan sebagai rupiah utuh (bilangan bulat)." backHref="/transactions" />
+      <PageHeader title="Catat transaksi" subtitle="Pilih jenis transaksi, lalu isi nominal dan dompet." backHref="/transactions" />
       <div className="flex flex-col gap-3">
         <HydrationGate>
+          {activeWallets.length === 0 ? (
+            <EmptyState
+              icon={<Wallet className="h-7 w-7" />}
+              title="Buat dompet dulu"
+              description="Transaksi membutuhkan dompet sumber atau tujuan. Setelah ada dompet, form Catat bisa digunakan."
+              action={
+                <LinkButton href="/wallets/new">
+                  <Plus className="h-4 w-4" aria-hidden />
+                  Buat dompet
+                </LinkButton>
+              }
+            />
+          ) : (
+            <>
           {preset ? (
             <Card as="section" className="bg-brand-soft/50 text-[12.5px] text-ink">
               Terpilih dari dompet{" "}
@@ -51,6 +67,8 @@ export default function NewTransactionPage() {
             fixedSourceWalletId={preset?.walletId}
             fixedSavingsTargetId={savingsParam || undefined}
           />
+            </>
+          )}
         </HydrationGate>
       </div>
     </>
