@@ -166,36 +166,38 @@ export function SixMonthTrendCard({ trend, monthKey }: { trend: TrendPoint[]; mo
         <p className="text-[13px] text-muted">Belum ada pemasukan atau pengeluaran di 6 bulan terakhir.</p>
       ) : (
         <>
-          <ul className="flex items-end gap-1.5" role="list" aria-label="Grafik tren 6 bulan pemasukan dan pengeluaran">
+          {/* Visual trend only – exact values are shown in the list below to avoid label collision on 375/390/430.
+              No compact numeric labels above bars, so Rp150rb/Rp115rb can never overlap. */}
+          <ul className="flex items-end gap-2" role="list" aria-label="Grafik tren 6 bulan pemasukan dan pengeluaran">
             {trend.map((point) => {
               const isCurrent = point.monthKey === monthKey;
               const incomeH = Math.max(2, (point.income / max) * 100);
               const expenseH = Math.max(2, (point.expense / max) * 100);
               return (
                 <li key={point.monthKey} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-                  <div className="flex h-28 w-full items-end justify-center gap-1">
-                    <div className="flex w-1/2 flex-col items-center gap-1">
-                      <span className="text-[10px] tabular text-income">{point.income > 0 ? formatCompactIDR(point.income) : ""}</span>
-                      <span
-                        className={cn("w-full rounded-t", point.income > 0 ? "bg-income" : "bg-income/20")}
-                        style={{ height: `${incomeH}%`, minHeight: point.income > 0 ? "4px" : "2px" }}
-                        role="img"
-                        aria-label={`Pemasukan ${formatMonthLabel(point.monthKey)} ${formatIDR(point.income)}`}
-                        title={`Pemasukan ${formatMonthLabel(point.monthKey)} ${formatIDR(point.income)}`}
-                      />
-                    </div>
-                    <div className="flex w-1/2 flex-col items-center gap-1">
-                      <span className="text-[10px] tabular text-expense">{point.expense > 0 ? formatCompactIDR(point.expense) : ""}</span>
-                      <span
-                        className={cn("w-full rounded-t", point.expense > 0 ? "bg-expense" : "bg-expense/20")}
-                        style={{ height: `${expenseH}%`, minHeight: point.expense > 0 ? "4px" : "2px" }}
-                        role="img"
-                        aria-label={`Pengeluaran ${formatMonthLabel(point.monthKey)} ${formatIDR(point.expense)}`}
-                        title={`Pengeluaran ${formatMonthLabel(point.monthKey)} ${formatIDR(point.expense)}`}
-                      />
-                    </div>
+                  <div className="flex h-20 w-full items-end justify-center gap-1">
+                    <span
+                      className={cn(
+                        "w-full max-w-[14px] flex-1 rounded-t transition-colors",
+                        point.income > 0 ? "bg-income" : "bg-income/20",
+                      )}
+                      style={{ height: `${incomeH}%`, minHeight: point.income > 0 ? "4px" : "2px" }}
+                      role="img"
+                      aria-label={`Pemasukan ${formatMonthLabel(point.monthKey)} ${formatIDR(point.income)}`}
+                      title={`Pemasukan ${formatMonthLabel(point.monthKey)} ${formatIDR(point.income)}`}
+                    />
+                    <span
+                      className={cn(
+                        "w-full max-w-[14px] flex-1 rounded-t transition-colors",
+                        point.expense > 0 ? "bg-expense" : "bg-expense/20",
+                      )}
+                      style={{ height: `${expenseH}%`, minHeight: point.expense > 0 ? "4px" : "2px" }}
+                      role="img"
+                      aria-label={`Pengeluaran ${formatMonthLabel(point.monthKey)} ${formatIDR(point.expense)}`}
+                      title={`Pengeluaran ${formatMonthLabel(point.monthKey)} ${formatIDR(point.expense)}`}
+                    />
                   </div>
-                  <span className={cn("text-[10px] font-semibold", isCurrent ? "text-ink" : "text-muted")}>
+                  <span className={cn("text-[10px] font-semibold leading-none", isCurrent ? "text-ink" : "text-muted")}>
                     {formatMonthLabel(point.monthKey).split(" ")[0]?.slice(0, 3)}
                   </span>
                 </li>
