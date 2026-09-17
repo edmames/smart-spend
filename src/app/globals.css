@@ -139,6 +139,63 @@ body {
 .field-label { font-size: 0.875rem; font-weight: 600; }
 .monetary-value, .tabular { font-variant-numeric: tabular-nums; }
 
+.total-money-hero {
+  background-color: color-mix(in srgb, var(--elevated) 38%, var(--surface));
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--primary-soft) 88%, var(--surface)),
+    color-mix(in srgb, var(--elevated) 38%, var(--surface))
+  );
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+  color: var(--foreground);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.total-money-hero__eyebrow { color: var(--primary-strong); }
+.total-money-hero__amount,
+.total-money-hero__value { color: var(--foreground); }
+.total-money-hero__label { color: var(--muted); }
+.total-money-hero__breakdown {
+  background-color: color-mix(in srgb, var(--elevated) 62%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--border));
+}
+.total-money-hero__split { border-color: color-mix(in srgb, var(--primary) 18%, var(--border)); }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .total-money-hero {
+    background-color: #123938;
+    background-image: none;
+    border-color: transparent;
+    color: #ffffff;
+    box-shadow: none;
+  }
+  :root:not([data-theme="light"]) .total-money-hero__eyebrow,
+  :root:not([data-theme="light"]) .total-money-hero__label { color: rgb(255 255 255 / 0.65); }
+  :root:not([data-theme="light"]) .total-money-hero__amount,
+  :root:not([data-theme="light"]) .total-money-hero__value { color: #ffffff; }
+  :root:not([data-theme="light"]) .total-money-hero__breakdown {
+    background-color: #204544;
+    border-color: rgb(255 255 255 / 0.1);
+  }
+  :root:not([data-theme="light"]) .total-money-hero__split { border-color: rgb(255 255 255 / 0.1); }
+}
+
+:root[data-theme="dark"] .total-money-hero {
+  background-color: #123938;
+  background-image: none;
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: none;
+}
+:root[data-theme="dark"] .total-money-hero__eyebrow,
+:root[data-theme="dark"] .total-money-hero__label { color: rgb(255 255 255 / 0.65); }
+:root[data-theme="dark"] .total-money-hero__amount,
+:root[data-theme="dark"] .total-money-hero__value { color: #ffffff; }
+:root[data-theme="dark"] .total-money-hero__breakdown {
+  background-color: #204544;
+  border-color: rgb(255 255 255 / 0.1);
+}
+:root[data-theme="dark"] .total-money-hero__split { border-color: rgb(255 255 255 / 0.1); }
+
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {

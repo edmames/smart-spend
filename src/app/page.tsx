@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, PiggyBank, Plus, Receipt, Wallet } from "lucide-react";
-import { Badge, Card, EmptyState, LinkButton, SectionTitle } from "@/components/ui/layout";
+import { ArrowRight, Database, PiggyBank, Plus, Receipt, Settings, Wallet, type LucideIcon } from "lucide-react";
+import { Button, Card, LinkButton, ProgressBar, SectionTitle, SkeletonBlock } from "@/components/ui/layout";
 import { HydrationGate } from "@/components/ui/hydration-gate";
 import { CashFlowCard, TotalMoneyCard } from "@/components/summary/summary";
 import { TransactionList } from "@/components/transactions/transaction-list";
@@ -16,7 +16,7 @@ export default function DashboardPage() {
     <>
       <DashboardHeader />
       <div className="flex flex-col gap-3">
-        <HydrationGate>
+        <HydrationGate fallback={<DashboardSkeleton />}>
           <DashboardBody />
         </HydrationGate>
       </div>
@@ -26,20 +26,17 @@ export default function DashboardPage() {
 
 function DashboardHeader() {
   return (
-    <header className="mb-3 flex min-h-11 items-center justify-between gap-2">
+    <header className="mb-2 flex min-h-11 items-center justify-between gap-2">
       <div>
-        <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-brand">SmartSpend</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand">SmartSpend</p>
         <h1 className="page-title text-ink">Ringkasan keuangan</h1>
       </div>
       <Link
         href="/settings"
         aria-label="Pengaturan"
-        className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-muted hover:text-ink"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface text-muted transition hover:border-brand/40 hover:text-brand"
       >
-        <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-          <circle cx="10" cy="10" r="2.6" />
-          <path d="M10 3.2v1.6M10 15.2v1.6M3.2 10h1.6M15.2 10h1.6M5.2 5.2l1.1 1.1M13.7 13.7l1.1 1.1M14.8 5.2l-1.1 1.1M6.3 13.7l-1.1 1.1" strokeLinecap="round" />
-        </svg>
+        <Settings className="h-[18px] w-[18px]" aria-hidden />
       </Link>
     </header>
   );
@@ -49,42 +46,11 @@ function DashboardBody() {
   const derived = useDerived();
   const data = useSmartSpendStore((state) => state.data);
 
-  if (derived.isEmpty) {
-    return (
-      <>
-        <Card as="section" className="flex flex-col gap-2 bg-brand-soft/50">
-          <p className="text-[15px] font-bold text-ink">Mulai dari satu dompet</p>
-          <p className="text-[13px] leading-relaxed text-ink/80">
-            SmartSpend tidak berisi data contoh. Semua angka muncul dari transaksi yang Anda catat — dan semuanya
-            tersimpan di perangkat ini saja.
-          </p>
-        </Card>
+  if (derived.isEmpty) return <EmptyDashboard />;
 
-        <EmptyState
-          icon={<Wallet className="h-7 w-7" />}
-          title="Belum ada yang dicatat"
-          description="Buat dompet (tunai / bank / e-wallet), lalu catat pemasukan atau pengeluaran pertama Anda."
-          action={
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <LinkButton href="/wallets/new">
-                <Plus className="h-4 w-4" aria-hidden />
-                Buat dompet
-              </LinkButton>
-              <LinkButton href="/transactions/new" variant="secondary">
-                <Receipt className="h-4 w-4" aria-hidden />
-                Catat transaksi
-              </LinkButton>
-            </div>
-          }
-        />
-
-        <OnboardingChecklist />
-      </>
-    );
-  }
-
-  const recent = sortTransactions(data.transactions).slice(-5).reverse();
-  const overBudget = derived.budgetUsages.filter((usage) => usage.overBudget);
+  const recent = sortTransactions(data.transactions).slice(-4).reverse();
+  const walletPreview = derived.walletRows.slice(0, 4);
+  const savingsPreview = derived.savingsProgress.filter((progress) => progress.target.archivedAt == null).slice(0, 3);
 
   return (
     <>
@@ -94,108 +60,15 @@ function DashboardBody() {
         savingsTotal={derived.totalMoney.savingsTotal}
       />
 
-      <div className="grid grid-cols-3 gap-2">
-        <LinkButton href="/transactions/new" size="sm" variant="primary" className="h-16 flex-col gap-1">
-          <Plus className="h-4 w-4" aria-hidden />
-          Catat
-        </LinkButton>
-        <LinkButton href="/wallets" size="sm" variant="secondary" className="h-16 flex-col gap-1">
-          <Wallet className="h-4 w-4" aria-hidden />
-          Dompet
-        </LinkButton>
-        <LinkButton href="/savings" size="sm" variant="secondary" className="h-16 flex-col gap-1">
-          <PiggyBank className="h-4 w-4" aria-hidden />
-          Tabungan
-        </LinkButton>
-      </div>
+      <QuickActions />
 
       <CashFlowCard summary={derived.monthly} />
 
-      {derived.walletRows.length > 0 ? (
-        <>
-          <SectionTitle
-            action={
-              <Link href="/wallets" className="flex items-center gap-0.5 text-[12px] font-semibold text-brand hover:underline">
-                Semua dompet
-                <ArrowRight className="h-3 w-3" aria-hidden />
-              </Link>
-            }
-          >
-            Dompet
-          </SectionTitle>
-          <Card as="section" padded={false} className="divide-y divide-line/70 px-3">
-            {derived.walletRows.slice(0, 4).map((row) => (
-              <Link key={row.wallet.id} href={`/wallets/${row.wallet.id}`} className="flex items-center justify-between gap-2 py-2.5">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-[13.5px] font-semibold text-ink">{row.wallet.name}</span>
-                  {row.wallet.archivedAt ? <Badge tone="neutral">arsip</Badge> : null}
-                </span>
-                <span className="shrink-0 text-[13.5px] font-bold tabular text-ink">{formatIDR(row.balance)}</span>
-              </Link>
-            ))}
-          </Card>
-        </>
-      ) : null}
+      {walletPreview.length > 0 ? <WalletPreview rows={walletPreview} total={derived.totalMoney.walletTotal} /> : null}
 
-      {derived.savingsProgress.length > 0 ? (
-        <>
-          <SectionTitle
-            action={
-              <Link href="/savings" className="flex items-center gap-0.5 text-[12px] font-semibold text-brand hover:underline">
-                Kelola
-                <ArrowRight className="h-3 w-3" aria-hidden />
-              </Link>
-            }
-          >
-            Tabungan
-          </SectionTitle>
-          <Card as="section" padded={false} className="divide-y divide-line/70 px-3">
-            {derived.savingsProgress.slice(0, 3).map((progress) => (
-              <Link
-                key={progress.target.id}
-                href={`/savings/${progress.target.id}`}
-                className="flex items-center justify-between gap-2 py-2.5"
-              >
-                <span className="min-w-0 truncate text-[13.5px] font-semibold text-ink">{progress.target.name}</span>
-                <span className="flex shrink-0 items-baseline gap-1.5">
-                  <span className="text-[13.5px] font-bold tabular text-ink">{formatIDR(progress.saved)}</span>
-                  <span className="text-[11px] tabular text-muted">
-                    {progress.percentCapped.toFixed(0)}%
-                  </span>
-                </span>
-              </Link>
-            ))}
-          </Card>
-        </>
-      ) : null}
+      {savingsPreview.length > 0 ? <SavingsPreview items={savingsPreview} /> : null}
 
-      {overBudget.length > 0 ? (
-        <Card as="section" className="flex flex-col gap-1.5 border-expense/30 bg-expense-soft">
-          <p className="text-[12.5px] font-bold text-expense">
-            {overBudget.length} budget melewati batas bulan ini
-          </p>
-          {overBudget.slice(0, 3).map((usage) => (
-            <p key={usage.budget.id} className="text-[12px] text-ink/80">
-              {formatIDR(usage.spent)} / {formatIDR(usage.limit)}
-            </p>
-          ))}
-          <Link href="/budgets" className="mt-1 text-[12px] font-semibold text-expense hover:underline">
-            Lihat budget
-          </Link>
-        </Card>
-      ) : null}
-
-      <SectionTitle
-        action={
-          <Link href="/transactions" className="flex items-center gap-0.5 text-[12px] font-semibold text-brand hover:underline">
-            Semua
-            <ArrowRight className="h-3 w-3" aria-hidden />
-          </Link>
-        }
-      >
-        Transaksi terakhir
-      </SectionTitle>
-      <TransactionList items={recent} emptyTitle="Belum ada transaksi" />
+      <RecentTransactions items={recent} />
 
       <p className="px-1 text-center text-[11px] leading-relaxed text-muted">
         Data disimpan di browser/perangkat ini dan belum tersinkron antarperangkat.{" "}
@@ -207,44 +80,194 @@ function DashboardBody() {
   );
 }
 
-function OnboardingChecklist() {
-  const data = useSmartSpendStore((state) => state.data);
-  const steps = [
-    { label: "Buat minimal satu dompet", done: data.wallets.length > 0, href: "/wallets/new" },
-    { label: "Catat pemasukan atau pengeluaran", done: data.transactions.length > 0, href: "/transactions/new" },
-    { label: "Siapkan budget bulanan", done: data.budgets.length > 0, href: "/budgets" },
-    { label: "Buat target tabungan", done: data.savingsTargets.length > 0, href: "/savings/new" },
-  ];
-
+function DashboardSkeleton() {
   return (
-    <Card as="section" className="flex flex-col gap-2">
-      <p className="text-[12px] font-bold uppercase tracking-wide text-muted">Langkah awal</p>
-      <ul className="flex flex-col gap-1.5">
-        {steps.map((step) => (
-          <li key={step.label} className="flex items-center justify-between gap-2">
-            <span className="flex min-w-0 items-center gap-2">
-              <span
-                className={
-                  step.done
-                    ? "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-income text-[10px] font-bold text-white"
-                    : "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-line"
-                }
-                aria-hidden
-              >
-                {step.done ? "✓" : ""}
-              </span>
-              <span className={step.done ? "truncate text-[13px] text-muted line-through" : "truncate text-[13px] font-medium text-ink"}>
-                {step.label}
-              </span>
-            </span>
-            {!step.done ? (
-              <Link href={step.href} className="shrink-0 text-[12px] font-semibold text-brand hover:underline">
-                buka
+    <div className="flex flex-col gap-3" role="status" aria-live="polite" aria-busy="true">
+      <span className="sr-only">Memuat ringkasan keuangan...</span>
+      <Card className="flex flex-col gap-3" aria-label="Memuat total uang">
+        <SkeletonBlock className="h-3 w-28" />
+        <SkeletonBlock className="h-8 w-48" />
+        <div className="grid grid-cols-2 gap-2">
+          <SkeletonBlock className="h-10" />
+          <SkeletonBlock className="h-10" />
+        </div>
+      </Card>
+      <div className="grid grid-cols-3 gap-2">
+        <SkeletonBlock className="h-11" />
+        <SkeletonBlock className="h-11" />
+        <SkeletonBlock className="h-11" />
+      </div>
+      <Card className="flex flex-col gap-2.5">
+        <SkeletonBlock className="h-4 w-24" />
+        <div className="grid grid-cols-2 gap-2">
+          <SkeletonBlock className="h-16" />
+          <SkeletonBlock className="h-16" />
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function QuickActions() {
+  return (
+    <section aria-label="Aksi cepat" className="grid grid-cols-3 gap-2">
+      <LinkButton href="/transactions/new" size="sm" variant="primary" className="min-h-11 gap-1.5">
+        <Plus className="h-4 w-4" aria-hidden />
+        Catat
+      </LinkButton>
+      <LinkButton href="/wallets" size="sm" variant="secondary" className="min-h-11 gap-1.5">
+        <Wallet className="h-4 w-4" aria-hidden />
+        Dompet
+      </LinkButton>
+      <LinkButton href="/savings" size="sm" variant="secondary" className="min-h-11 gap-1.5">
+        <PiggyBank className="h-4 w-4" aria-hidden />
+        Tabungan
+      </LinkButton>
+    </section>
+  );
+}
+
+function WalletPreview({ rows, total }: { rows: ReturnType<typeof useDerived>["walletRows"]; total: number }) {
+  return (
+    <section aria-labelledby="wallet-preview-title" className="flex flex-col gap-2">
+      <SectionTitle
+        id="wallet-preview-title"
+        action={
+          <Link href="/wallets" className="flex items-center gap-0.5 text-[12px] font-semibold text-brand hover:underline">
+            Semua dompet
+            <ArrowRight className="h-3 w-3" aria-hidden />
+          </Link>
+        }
+      >
+        Di mana uang Anda
+      </SectionTitle>
+      <Card padded={false} className="overflow-hidden">
+        <div className="flex items-center justify-between gap-2 border-b border-line px-3 py-2">
+          <span className="text-[12px] font-semibold text-muted">Total dompet</span>
+          <span className="text-[13.5px] font-bold tabular text-ink">{formatIDR(total)}</span>
+        </div>
+        <ul className="divide-y divide-line/70 px-3">
+          {rows.map((row) => (
+            <li key={row.wallet.id}>
+              <Link href={`/wallets/${row.wallet.id}`} className="flex items-center justify-between gap-2 py-2.5">
+                <span className="min-w-0 truncate text-[13.5px] font-semibold text-ink">{row.wallet.name}</span>
+                <span className="shrink-0 text-[13.5px] font-bold tabular text-ink">{formatIDR(row.balance)}</span>
               </Link>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </section>
+  );
+}
+
+function SavingsPreview({ items }: { items: ReturnType<typeof useDerived>["savingsProgress"] }) {
+  return (
+    <section aria-labelledby="savings-preview-title" className="flex flex-col gap-2">
+      <SectionTitle
+        id="savings-preview-title"
+        action={
+          <Link href="/savings" className="flex items-center gap-0.5 text-[12px] font-semibold text-brand hover:underline">
+            Kelola
+            <ArrowRight className="h-3 w-3" aria-hidden />
+          </Link>
+        }
+      >
+        Tabungan
+      </SectionTitle>
+      <Card padded={false} className="overflow-hidden px-3">
+        <ul className="divide-y divide-line/70">
+          {items.map((progress) => (
+            <li key={progress.target.id}>
+              <Link href={`/savings/${progress.target.id}`} className="flex flex-col gap-1.5 py-2.5">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="min-w-0 truncate text-[13.5px] font-semibold text-ink">{progress.target.name}</span>
+                  <span className="shrink-0 text-[13px] font-bold tabular text-ink">{formatIDR(progress.saved)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <ProgressBar
+                    percent={progress.percentCapped}
+                    tone={progress.goalReached ? "income" : "savings"}
+                    className="h-1.5"
+                    label={`Progres ${progress.target.name}`}
+                  />
+                  <span className="w-9 shrink-0 text-right text-[11px] tabular text-muted">
+                    {progress.percentCapped.toFixed(0)}%
+                  </span>
+                </div>
+                <p className="text-[11.5px] text-muted">Target {formatIDR(progress.targetAmount)}</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </section>
+  );
+}
+
+function RecentTransactions({ items }: { items: ReturnType<typeof sortTransactions> }) {
+  return (
+    <section aria-labelledby="recent-transactions-title" className="flex flex-col gap-2">
+      <SectionTitle
+        id="recent-transactions-title"
+        action={
+          <Link href="/transactions" className="flex items-center gap-0.5 text-[12px] font-semibold text-brand hover:underline">
+            Semua
+            <ArrowRight className="h-3 w-3" aria-hidden />
+          </Link>
+        }
+      >
+        Transaksi terakhir
+      </SectionTitle>
+      <TransactionList items={items} emptyTitle="Belum ada transaksi" dense />
+    </section>
+  );
+}
+
+function EmptyDashboard() {
+  return (
+    <Card as="section" className="flex flex-col gap-4 bg-brand-soft/55">
+      <div className="flex items-start gap-3">
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand text-primary-foreground">
+          <Wallet className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h2 className="card-title text-ink">Mulai dari dompet pertama</h2>
+          <p className="mt-1 text-[13px] leading-relaxed text-ink/80">
+            SmartSpend dimulai kosong. Buat dompet, lalu catat transaksi. Semua data tersimpan lokal di perangkat ini.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-2">
+        <EmptyStep icon={Wallet} text="Buat dompet tunai, bank, atau e-wallet." />
+        <EmptyStep icon={Receipt} text="Catat pemasukan, pengeluaran, transfer, atau tabungan setelah dompet ada." />
+        <EmptyStep icon={Database} text="Tidak ada data contoh dan tidak ada sinkronisasi otomatis." />
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <LinkButton href="/wallets/new">
+          <Plus className="h-4 w-4" aria-hidden />
+          Buat dompet
+        </LinkButton>
+        <Button variant="secondary" disabled className="justify-center">
+          <Receipt className="h-4 w-4" aria-hidden />
+          Catat transaksi
+        </Button>
+      </div>
+
+      <p className="text-[11.5px] leading-relaxed text-muted">
+        Catat transaksi aktif setelah ada dompet, supaya setiap transaksi punya sumber atau tujuan dana.
+      </p>
     </Card>
+  );
+}
+
+function EmptyStep({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
+  return (
+    <div className="flex items-center gap-2 text-[12.5px] text-ink/80">
+      <Icon className="h-4 w-4 shrink-0 text-brand" aria-hidden />
+      <span>{text}</span>
+    </div>
   );
 }

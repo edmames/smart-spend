@@ -13,12 +13,12 @@ import { Button, Card, LoadingPanel } from "@/components/ui/layout";
  * blocks until `hydration === "ready"` and turns storage corruption into an
  * explicit, recoverable screen instead of silently wiping the user's data.
  */
-export function HydrationGate({ children }: { children: React.ReactNode }) {
+export function HydrationGate({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   const hydration = useSmartSpendStore((state) => state.hydration);
   const failure = useSmartSpendStore((state) => state.storageFailure);
   const reload = useSmartSpendStore((state) => state.reload);
 
-  if (hydration !== "ready") return <LoadingPanel />;
+  if (hydration !== "ready") return fallback ?? <LoadingPanel />;
 
   if (failure) {
     return (
