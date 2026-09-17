@@ -75,6 +75,7 @@ export function TransactionForm({
   lockKind = false,
   fixedSavingsTargetId,
   fixedSourceWalletId,
+  onCancel,
 }: {
   mode: TransactionFormMode;
   initialKind?: TransactionFormKind;
@@ -83,6 +84,12 @@ export function TransactionForm({
   fixedSavingsTargetId?: string;
   /** Presets "from wallet" when arriving from a wallet screen (still editable). */
   fixedSourceWalletId?: string;
+  /**
+   * Abandoning without saving. An edit screen owns a read-only view to return to, so
+   * it passes a handler that drops the draft form; creating a record has nowhere to
+   * return to, so "Batal" falls back to history.
+   */
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const data = useSmartSpendStore((state) => state.data);
@@ -279,16 +286,20 @@ export function TransactionForm({
       {/*
         A floating tray, not a full-bleed strip: inset, rounded and bordered so it does
         not read as a second navigation bar above the real one. Its offset clears the
-        fixed nav *and* the safe area under it. Creating a record can be abandoned from
-        here; an edit is left through the detail header's "Tutup" instead, so the two
-        screens never offer two different ways to cancel the same thing.
+        fixed nav *and* the safe area under it. Batal never saves: in edit mode it asks
+        the detail screen to drop the draft (the header's "Tutup" is the same exit, for
+        when the user is near the top of the form), and in create mode it leaves the
+        page the way the user arrived.
       */}
       <div className="sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom)+0.75rem)] z-10 flex gap-2 rounded-xl border border-line bg-surface p-1.5 shadow-sm">
-        {mode === "create" ? (
-          <Button variant="secondary" block onClick={() => router.back()} disabled={form.formState.isSubmitting}>
-            Batal
-          </Button>
-        ) : null}
+        <Button
+          variant="secondary"
+          block
+          onClick={() => (onCancel ? onCancel() : router.back())}
+          disabled={form.formState.isSubmitting}
+        >
+          Batal
+        </Button>
         <Button type="submit" block disabled={form.formState.isSubmitting}>
           {mode === "create" ? "Simpan transaksi" : "Simpan perubahan"}
         </Button>

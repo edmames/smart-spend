@@ -42,6 +42,11 @@ function TransactionDetail({ id }: { id: string }) {
   const [askDelete, setAskDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // One exit from edit mode, shared by the header's "Tutup" and the tray's "Batal":
+  // dropping the form discards the draft, so neither path can write to the ledger.
+  const startEditing = () => setEditing(true);
+  const cancelEditing = () => setEditing(false);
+
   if (!transaction) {
     return (
       <EmptyState
@@ -80,7 +85,7 @@ function TransactionDetail({ id }: { id: string }) {
               size="sm"
               variant={editing ? "soft" : "secondary"}
               aria-pressed={editing}
-              onClick={() => setEditing((value) => !value)}
+              onClick={() => (editing ? cancelEditing() : startEditing())}
             >
               {editing ? (
                 <>
@@ -149,7 +154,7 @@ function TransactionDetail({ id }: { id: string }) {
       {editing ? (
         <>
           <SectionTitle>Ubah transaksi</SectionTitle>
-          <TransactionForm mode="edit" transaction={transaction} />
+          <TransactionForm mode="edit" transaction={transaction} onCancel={cancelEditing} />
           <p className="px-1 text-[11.5px] leading-relaxed text-muted">
             Perubahan divalidasi terhadap seluruh riwayat (bukan hanya transaksi ini). Jika membuat saldo negatif di
             masa lalu, perubahan ditolak dan data lama tetap utuh.

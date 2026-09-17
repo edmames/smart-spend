@@ -287,13 +287,60 @@ describe("Transactions Phase 2C UX", () => {
     const close = screen.getByRole("button", { name: "Tutup" });
     expect(close).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("button", { name: "Ubah" })).not.toBeInTheDocument();
-    // Editing is cancelled in exactly one place: the header. The tray only saves.
+    // Tutup is not the only way out: the tray keeps a secondary Batal beside save.
+    expect(screen.getByRole("button", { name: "Batal" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Simpan perubahan" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Batal" })).not.toBeInTheDocument();
 
     fireEvent.click(close);
     expect(screen.getByRole("button", { name: "Ubah" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Simpan perubahan" })).not.toBeInTheDocument();
+  });
+
+  /**
+   * Both edit-mode exits must be inert with respect to the ledger: the form holds a
+   * draft copy, so leaving it can only discard. The stored record is compared as text
+   * so that mutating the same object in place cannot pass unnoticed.
+   */
+  it("cancels an edit from Batal and from Tutup without writing anything", () => {
+    seedData();
+    routeId = "expense";
+    render(<TransactionDetailPage />);
+
+    const stored = () =>
+      JSON.stringify(useSmartSpendStore.getState().data.transactions.find((item) => item.id === "expense"));
+    const original = stored();
+
+    // the sticky tray's Batal
+    fireEvent.click(screen.getByRole("button", { name: "Ubah" }));
+    fireEvent.change(screen.getByLabelText(/Nominal/i), { target: { value: "123.456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Batal" }));
+    expect(screen.queryByRole("button", { name: "Simpan perubahan" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ubah" })).toBeInTheDocument();
+    expect(stored()).toBe(original);
+
+    // the detail header's Tutup
+    fireEvent.click(screen.getByRole("button", { name: "Ubah" }));
+    fireEvent.change(screen.getByLabelText(/Nominal/i), { target: { value: "654.321" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tutup" }));
+    expect(screen.queryByRole("button", { name: "Simpan perubahan" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ubah" })).toBeInTheDocument();
+
+    expect(stored()).toBe(original);
+    expect(useSmartSpendStore.getState().data.transactions.find((item) => item.id === "expense")?.amount).toBe(750_000);
+  });
+
+  it("still saves an edit through Simpan perubahan", async () => {
+    seedData();
+    routeId = "expense";
+    render(<TransactionDetailPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Ubah" }));
+    fireEvent.change(screen.getByLabelText(/Nominal/i), { target: { value: "100.000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+
+    await waitFor(() =>
+      expect(useSmartSpendStore.getState().data.transactions.find((item) => item.id === "expense")?.amount).toBe(100_000),
+    );
   });
 
   it("keeps all five kinds pickable in one block that still explains the chosen one", async () => {
