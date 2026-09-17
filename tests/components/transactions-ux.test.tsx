@@ -89,6 +89,29 @@ function seedData() {
   useSmartSpendStore.setState({ hydration: "ready" });
 }
 
+/** One expense of an exact size, so the detail hero can be exercised at any magnitude. */
+function seedSingleExpense(amount: number) {
+  useSmartSpendStore.getState().resetStore(
+    emptyData({
+      wallets: [makeWallet("bca", { name: "BCA" })],
+      transactions: [
+        makeTx({
+          id: "big",
+          type: "expense",
+          amount,
+          sourceWalletId: "bca",
+          categoryId: "makanan",
+          note: "Belanja besar",
+          date: on(2026, 9, 7),
+          createdAt: at(2026, 9, 7, 8),
+        }),
+      ],
+    }),
+  );
+  useSmartSpendStore.setState({ hydration: "ready" });
+  routeId = "big";
+}
+
 describe("Transactions Phase 2C UX", () => {
   beforeEach(() => {
     configureRepository(createLocalStorageRepository(new MemoryStorageAdapter()));
@@ -229,6 +252,80 @@ describe("Transactions Phase 2C UX", () => {
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/tidak cukup/i));
     expect(useSmartSpendStore.getState().data.transactions.find((item) => item.id === "expense")?.amount).toBe(750_000);
+  });
+
+  /**
+   * The largest values a user can record, by the four magnitudes the visual review
+   * called out. Rendering them is the part jsdom can check; whether they *fit* is a
+   * layout question, so what is asserted here is the structure that makes fitting
+   * possible: the amount never shares a row with the actions.
+   */
+  it.each([1_000, 1_000_000, 999_999_999, 9_999_999_999])(
+    "gives the amount %s a row of its own, clear of the Ubah and Hapus controls",
+    (amount) => {
+      seedSingleExpense(amount);
+      render(<TransactionDetailPage />);
+
+      const amountBlock = screen.getByText(`-Rp${amount.toLocaleString("id-ID")}`).parentElement as HTMLElement;
+      expect(within(amountBlock).queryByRole("button")).toBeNull();
+      expect(amountBlock.contains(screen.getByRole("button", { name: "Ubah" }))).toBe(false);
+      expect(amountBlock.contains(screen.getByRole("button", { name: "Hapus transaksi" }))).toBe(false);
+    },
+  );
+
+  it("leaves edit mode through an explicit Tutup control, not a pencil toggle", () => {
+    seedData();
+    routeId = "expense";
+    render(<TransactionDetailPage />);
+
+    // Normal mode keeps both row actions easy to discover.
+    expect(screen.getByRole("button", { name: "Ubah" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hapus transaksi" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ubah" }));
+
+    const close = screen.getByRole("button", { name: "Tutup" });
+    expect(close).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "Ubah" })).not.toBeInTheDocument();
+    // Editing is cancelled in exactly one place: the header. The tray only saves.
+    expect(screen.getByRole("button", { name: "Simpan perubahan" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Batal" })).not.toBeInTheDocument();
+
+    fireEvent.click(close);
+    expect(screen.getByRole("button", { name: "Ubah" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Simpan perubahan" })).not.toBeInTheDocument();
+  });
+
+  it("keeps all five kinds pickable in one block that still explains the chosen one", async () => {
+    seedData();
+    render(<TransactionForm mode="create" initialKind="expense" />);
+
+    const picker = screen.getByRole("group", { name: "Jenis transaksi" });
+    expect(within(picker).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Masuk",
+      "Keluar",
+      "Transfer",
+      "Setor",
+      "Tarik",
+    ]);
+    expect(within(picker).getByRole("button", { name: "Keluar" })).toHaveAttribute("aria-pressed", "true");
+    for (const label of ["Masuk", "Transfer", "Setor", "Tarik"]) {
+      expect(within(picker).getByRole("button", { name: label })).toHaveAttribute("aria-pressed", "false");
+    }
+
+    // the explanation travels with the picker instead of sitting in a second card
+    const block = picker.closest("section") as HTMLElement;
+    expect(block).not.toBeNull();
+    expect(within(block).getByText(/mengurangi uang total/i)).toBeInTheDocument();
+
+    // ...and Nominal is still further down the same form, not displaced past it
+    const amountField = screen.getByLabelText(/Nominal/i);
+    expect(picker.compareDocumentPosition(amountField) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await userEvent.click(within(picker).getByRole("button", { name: "Transfer" }));
+    expect(within(picker).getByRole("button", { name: "Transfer" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(picker).getByRole("button", { name: "Keluar" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(block).getByText(/memindahkan uang antar dompet/i)).toBeInTheDocument();
   });
 });
 

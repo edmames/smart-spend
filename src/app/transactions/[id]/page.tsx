@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Pencil, Trash2, X } from "lucide-react";
 import { Badge, Button, Card, EmptyState, PageHeader, SectionTitle } from "@/components/ui/layout";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HydrationGate } from "@/components/ui/hydration-gate";
@@ -61,28 +61,50 @@ function TransactionDetail({ id }: { id: string }) {
   return (
     <>
       <Card as="section" className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-start gap-3">
+        {/*
+          Type/icon and actions share this row; the amount gets a row of its own below.
+          Nothing that renders money can therefore be squeezed under Ubah/Hapus on a
+          narrow phone — Rp9.999.999.999 widens its own row instead of colliding.
+        */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
               <TransactionIcon transaction={transaction} className="h-5 w-5" />
             </span>
-            <div className="flex min-w-0 flex-col gap-1">
-              <Badge tone={toneFor(transaction.type)}>{TRANSACTION_TYPE_LABELS[transaction.type]}</Badge>
-              <p className="text-[27px] font-extrabold leading-tight tabular text-ink">
-                {formatSignedIDR(transaction.amount, signKind)}
-              </p>
-              <p className="text-[13px] leading-snug text-muted">{summary}</p>
-            </div>
+            <Badge tone={toneFor(transaction.type)} className="min-w-0">
+              {TRANSACTION_TYPE_LABELS[transaction.type]}
+            </Badge>
           </div>
           <div className="flex shrink-0 gap-1.5">
-            <Button size="sm" variant={editing ? "soft" : "secondary"} onClick={() => setEditing((value) => !value)}>
-              <Pencil className="h-3.5 w-3.5" aria-hidden />
-              {editing ? "Tutup" : "Ubah"}
+            <Button
+              size="sm"
+              variant={editing ? "soft" : "secondary"}
+              aria-pressed={editing}
+              onClick={() => setEditing((value) => !value)}
+            >
+              {editing ? (
+                <>
+                  <X className="h-4 w-4" aria-hidden />
+                  Tutup
+                </>
+              ) : (
+                <>
+                  <Pencil className="h-3.5 w-3.5" aria-hidden />
+                  Ubah
+                </>
+              )}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setAskDelete(true)} aria-label="Hapus transaksi">
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="min-w-0 break-words text-[27px] font-extrabold leading-tight tabular text-ink">
+            {formatSignedIDR(transaction.amount, signKind)}
+          </p>
+          <p className="text-[13px] leading-snug text-muted">{summary}</p>
         </div>
 
         <dl className="flex flex-col divide-y divide-line/70 text-[13px]">

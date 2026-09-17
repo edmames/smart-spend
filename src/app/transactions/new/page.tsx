@@ -37,7 +37,7 @@ export default function NewTransactionPage() {
 
   return (
     <>
-      <PageHeader title="Catat transaksi" subtitle="Nominal selalu disimpan sebagai rupiah utuh (bilangan bulat)." backHref="/transactions" />
+      <PageHeader title="Catat transaksi" subtitle="Pilih jenis transaksi, lalu isi nominal dan dompet." backHref="/transactions" />
       <div className="flex flex-col gap-3">
         <HydrationGate>
           {activeWallets.length === 0 ? (

@@ -182,11 +182,16 @@ export function TransactionForm({
   return (
     <form onSubmit={submit} className="flex flex-col gap-3" noValidate>
       {!lockKind ? (
-        <Card as="section">
+        <Card as="section" className="flex flex-col gap-2.5">
+          {/*
+            One card for the picker *and* what the chosen type means. The five kinds wrap
+            3 + 2 instead of 2 + 2 + 1, so the block is a row shorter and Nominal sits
+            that much higher on the phone.
+          */}
           <Segmented<TransactionFormKind>
-            label="Jenis"
+            label="Jenis transaksi"
             value={selectedKind as TransactionFormKind}
-            columns={2}
+            columns={3}
             onChange={(next) => {
               form.setValue("kind", next, { shouldValidate: false });
               // References that cannot exist on the new kind are cleared so a
@@ -199,6 +204,12 @@ export function TransactionForm({
             }}
             options={USER_TRANSACTION_FORM_KINDS.map((value) => ({ value, label: KIND_SHORT_LABELS[value] }))}
           />
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[12.5px] leading-relaxed text-muted">{KIND_NOTES[selectedKind]}</p>
+            <Badge tone={toneForKind(selectedKind)} className="shrink-0">
+              {MOVEMENT_LABELS[selectedKind]}
+            </Badge>
+          </div>
         </Card>
       ) : (
         <Card as="section" className="flex items-center justify-between gap-2">
@@ -208,17 +219,6 @@ export function TransactionForm({
           </span>
         </Card>
       )}
-
-      <Card as="section" className="flex flex-col gap-2.5 bg-brand-soft/40">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Jenis transaksi</p>
-            <h2 className="mt-0.5 text-[15px] font-bold text-ink">{KIND_LABELS[selectedKind]}</h2>
-          </div>
-          <Badge tone={toneForKind(selectedKind)}>{MOVEMENT_LABELS[selectedKind]}</Badge>
-        </div>
-        <p className="text-[12.5px] leading-relaxed text-muted">{KIND_NOTES[selectedKind]}</p>
-      </Card>
 
       <Card as="section" className="flex flex-col gap-3">
         {form.formState.errors.root?.message ? (
@@ -276,10 +276,19 @@ export function TransactionForm({
         <FormNote control={form.control} label="Deskripsi" placeholder="cth: makan siang, gaji, kirim ke Cash" />
       </Card>
 
-      <div className="sticky bottom-[calc(var(--nav-height)+0.75rem)] z-10 flex gap-2 pt-1">
-        <Button variant="secondary" block onClick={() => router.back()} disabled={form.formState.isSubmitting}>
-          Batal
-        </Button>
+      {/*
+        A floating tray, not a full-bleed strip: inset, rounded and bordered so it does
+        not read as a second navigation bar above the real one. Its offset clears the
+        fixed nav *and* the safe area under it. Creating a record can be abandoned from
+        here; an edit is left through the detail header's "Tutup" instead, so the two
+        screens never offer two different ways to cancel the same thing.
+      */}
+      <div className="sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom)+0.75rem)] z-10 flex gap-2 rounded-xl border border-line bg-surface p-1.5 shadow-sm">
+        {mode === "create" ? (
+          <Button variant="secondary" block onClick={() => router.back()} disabled={form.formState.isSubmitting}>
+            Batal
+          </Button>
+        ) : null}
         <Button type="submit" block disabled={form.formState.isSubmitting}>
           {mode === "create" ? "Simpan transaksi" : "Simpan perubahan"}
         </Button>
