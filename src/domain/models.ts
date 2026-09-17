@@ -288,13 +288,38 @@ export type NewTransaction = NewRecord<Transaction>;
 /* Settings                                                                    */
 /* -------------------------------------------------------------------------- */
 
+/** Visual theme preference. `system` defers to the OS / browser preference. */
+export const THEMES = ["system", "light", "dark"] as const;
+export type Theme = (typeof THEMES)[number];
+
+/** Default transaction type preselected on the "Catat transaksi" screen. */
+export const DEFAULT_TRANSACTION_TYPES = ["expense", "income"] as const;
+export type DefaultTransactionType = (typeof DEFAULT_TRANSACTION_TYPES)[number];
+
 export const appSettingsSchema = z
   .object({
     currency: z.literal("IDR"),
     firstDayOfWeek: z.union([z.literal(1), z.literal(7)]).optional(),
+    /** Theme choice persisted immediately from Settings. */
+    theme: z
+      .enum(THEMES)
+      .default("system")
+      .catch(() => "system" as Theme),
+    /** Default transaction kind pre-selected in the add-transaction screen. */
+    firstTransactionType: z
+      .enum(DEFAULT_TRANSACTION_TYPES)
+      .default("expense")
+      .catch(() => "expense" as DefaultTransactionType),
+    /** When true, monetary values are masked on high-level surfaces. */
+    hideBalances: z.boolean().default(false).catch(() => false),
   })
   .strict();
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
-export const DEFAULT_SETTINGS: AppSettings = { currency: "IDR" };
+export const DEFAULT_SETTINGS: AppSettings = {
+  currency: "IDR",
+  theme: "system",
+  firstTransactionType: "expense",
+  hideBalances: false,
+};
 

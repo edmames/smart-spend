@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, type PaymentMethod } from "@/domain/models";
 import { categoriesForType } from "@/domain/categories";
 import { useSmartSpendStore } from "@/app/store";
 import { formatIDR } from "@/domain/money";
 import { calculateWalletBalance } from "@/domain/ledger";
+import { applyTheme } from "@/lib/theme";
+import type { Theme } from "@/domain/models";
 
 /**
- * SmartSpend â€” option lists for forms and filters.
+ * SmartSpend — option lists for forms and filters.
  *
  * Every picker is built from the store, so archived wallets disappear from
  * "new transaction" lists but remain visible (and correctly labelled) on
@@ -101,3 +103,16 @@ export const PAYMENT_METHOD_OPTIONS: Option[] = PAYMENT_METHODS.map((method: Pay
   value: method,
   label: PAYMENT_METHOD_LABELS[method],
 }));
+
+/**
+ * Reads `settings.theme` from the store and reflects it on `<html data-theme>`
+ * so the CSS in `globals.css` picks the right palette. "system" removes the
+ * attribute so `@media (prefers-color-scheme)` takes over. Persisting happens
+ * in the Settings screen; this hook only *applies* the preference.
+ */
+export function useTheme(): void {
+  const theme = useSmartSpendStore((state) => (state.data.settings?.theme as Theme) ?? "system");
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+}

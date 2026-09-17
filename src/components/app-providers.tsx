@@ -2,16 +2,18 @@
 
 import { useEffect } from "react";
 import { useSmartSpendStore } from "@/app/store";
+import { useTheme } from "@/app/hooks";
 
 /**
  * Client root behaviour:
  *  - hydrate from the repository exactly once per document,
  *  - follow changes made in another tab (same storage key),
- *  - never write during hydration.
+ *  - apply the persisted theme preference.
  */
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const hydrate = useSmartSpendStore((state) => state.hydrate);
   const reload = useSmartSpendStore((state) => state.reload);
+  useTheme();
 
   useEffect(() => {
     void hydrate();

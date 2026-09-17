@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartPie, LayoutDashboard, MoreHorizontal, Receipt, Wallet } from "lucide-react";
+import { ChartPie, Cog, LayoutDashboard, Receipt, Wallet } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /** Primary destinations. Transaction creation lives in the Transaksi page header. */
@@ -25,10 +25,10 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { label: "Budget", href: "/budgets", icon: ChartPie, match: (p) => p.startsWith("/budgets") },
   {
-    label: "Lainnya",
-    href: "/more",
-    icon: MoreHorizontal,
-    match: (p) => p.startsWith("/more") || p.startsWith("/reports") || p.startsWith("/settings"),
+    label: "Pengaturan",
+    href: "/settings",
+    icon: Cog,
+    match: (p) => p.startsWith("/settings") || p.startsWith("/more"),
   },
 ];
 

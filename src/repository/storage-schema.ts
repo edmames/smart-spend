@@ -8,11 +8,12 @@ import {
   transactionSchema,
   walletSchema,
   DATE_TIME_SCHEMA,
+  DEFAULT_SETTINGS,
 } from "@/domain/models";
 import { DEFAULT_CATEGORIES } from "@/domain/categories";
 
 /**
- * SmartSpend — versioned persistence schema (v1).
+ * SmartSpend — versioned persistence schema (v4).
  *
  * Nothing is ever trusted from storage. Every read goes through
  * `parsePersistedData`, which:
@@ -27,7 +28,7 @@ import { DEFAULT_CATEGORIES } from "@/domain/categories";
  * silently rewritten.
  */
 
-export const STORAGE_VERSION = 3 as const;
+export const STORAGE_VERSION = 4 as const;
 // Keep the installed storage key so v1 users are migrated instead of appearing empty.
 export const STORAGE_KEY = "smarts-end.v1";
 export const CORRUPT_BACKUP_PREFIX = `${STORAGE_KEY}.corrupt.`;
@@ -126,6 +127,19 @@ export const MIGRATIONS: readonly Migration[] = [
       ...payload,
       version: 3,
       categories: Array.isArray(payload.categories) ? payload.categories : seedDefaultCategories(),
+    }),
+  },
+  {
+    from: 3,
+    to: 4,
+    description: "Backfill Settings preferences (theme, firstTransactionType, hideBalances) with defaults.",
+    migrate: (payload) => ({
+      ...payload,
+      version: 4,
+      settings: {
+        ...DEFAULT_SETTINGS,
+        ...((payload.settings && typeof payload.settings === "object") ? payload.settings : {}),
+      },
     }),
   },
 ] as const;
