@@ -17,8 +17,8 @@ import { colorFor } from "@/components/ui/theme";
 import { sortTransactions } from "@/domain/ledger";
 import { cn } from "@/lib/cn";
 
-function renderCategoryIcon(categoryId: string | null | undefined, className?: string) {
-  const Icon = getCategoryIcon(categoryId);
+function renderCategoryIcon(categoryId: string | null | undefined, categories: Parameters<typeof getCategoryIcon>[1], className?: string) {
+  const Icon = getCategoryIcon(categoryId, categories);
   return <Icon className={className} strokeWidth={2} aria-hidden />;
 }
 
@@ -58,7 +58,7 @@ function BudgetDetail({ id }: { id: string }) {
   }
 
   const usage = calculateBudgetUsage(budget, data.transactions, budget.month);
-  const meta = getCategoryMeta(budget.categoryId);
+  const meta = getCategoryMeta(budget.categoryId, data.categories);
   const color = colorFor(meta?.color);
 
   const stateInfo = usage.overBudget
@@ -97,10 +97,10 @@ function BudgetDetail({ id }: { id: string }) {
                 color.border,
               )}
             >
-              {renderCategoryIcon(budget.categoryId, cn("h-5 w-5", color.text))}
+              {renderCategoryIcon(budget.categoryId, data.categories, cn("h-5 w-5", color.text))}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-[17px] font-extrabold text-ink">{categoryLabel(budget.categoryId)}</p>
+              <p className="truncate text-[17px] font-extrabold text-ink">{categoryLabel(budget.categoryId, "Tanpa kategori", data.categories)}</p>
               <p className="text-[12px] text-muted">{formatMonthLabel(budget.month)}</p>
             </div>
           </div>
@@ -115,7 +115,7 @@ function BudgetDetail({ id }: { id: string }) {
         <ProgressBar
           percent={usage.percent}
           tone={stateInfo.tone}
-          label={`Budget ${categoryLabel(budget.categoryId)}`}
+          label={`Budget ${categoryLabel(budget.categoryId, "Tanpa kategori", data.categories)}`}
         />
 
         <div className="grid grid-cols-2 gap-2 rounded-xl bg-canvas p-2.5 text-[12.5px]">
@@ -165,7 +165,7 @@ function BudgetDetail({ id }: { id: string }) {
       {matchingTransactions.length === 0 ? (
         <EmptyState
           title="Belum ada pengeluaran"
-          description={`Belum ada transaksi pengeluaran kategori ${categoryLabel(budget.categoryId)} pada ${formatMonthLabel(budget.month)}.`}
+          description={`Belum ada transaksi pengeluaran kategori ${categoryLabel(budget.categoryId, "Tanpa kategori", data.categories)} pada ${formatMonthLabel(budget.month)}.`}
         />
       ) : (
         <ul className="flex flex-col gap-2">
@@ -177,7 +177,7 @@ function BudgetDetail({ id }: { id: string }) {
 
       <ConfirmDialog
         open={askDelete}
-        title={`Hapus budget ${categoryLabel(budget.categoryId)}?`}
+        title={`Hapus budget ${categoryLabel(budget.categoryId, "Tanpa kategori", data.categories)}?`}
         description="Hanya batas anggarannya yang dihapus. Seluruh transaksi pengeluaran tetap utuh di catatan keuangan."
         confirmLabel="Hapus"
         onConfirm={() => {

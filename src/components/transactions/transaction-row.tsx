@@ -25,6 +25,7 @@ import { useMemo } from "react";
 export interface DescribeContext {
   walletName: (id: string | null | undefined) => string;
   savingsName: (id: string | null | undefined) => string;
+  categoryName?: (id: string | null | undefined) => string;
 }
 
 export function describeTransaction(transaction: Transaction, context: DescribeContext): string {
@@ -32,7 +33,7 @@ export function describeTransaction(transaction: Transaction, context: DescribeC
     case "income":
       return `Masuk ke ${context.walletName(transaction.destinationWalletId)}`;
     case "expense":
-      return `${categoryLabel(transaction.categoryId)} · ${context.walletName(transaction.sourceWalletId)}`;
+      return `${context.categoryName?.(transaction.categoryId) ?? categoryLabel(transaction.categoryId)} · ${context.walletName(transaction.sourceWalletId)}`;
     case "transfer":
       return `${context.walletName(transaction.sourceWalletId)} → ${context.walletName(transaction.destinationWalletId)}`;
     case "savings_deposit":
@@ -58,12 +59,14 @@ export function useDescribeContext(): DescribeContext {
     return {
       walletName: (id) => (id ? (wallets.get(id) ?? "Dompet terhapus") : "—"),
       savingsName: (id) => (id ? (savings.get(id) ?? "Target terhapus") : "—"),
+      categoryName: (id) => categoryLabel(id, "Tanpa kategori", data.categories),
     };
-  }, [data.wallets, data.savingsTargets]);
+  }, [data.wallets, data.savingsTargets, data.categories]);
 }
 
 /** Icon resolution is a plain lookup (no component is created during render). */
 export function TransactionIcon({ transaction, className }: { transaction: Transaction; className?: string }) {
+  const categories = useSmartSpendStore((state) => state.data.categories);
   const Icon =
     transaction.type === "transfer"
       ? ArrowLeftRight
@@ -71,13 +74,14 @@ export function TransactionIcon({ transaction, className }: { transaction: Trans
         ? PiggyBank
         : transaction.type === "opening_balance"
           ? Lightbulb
-          : (getCategoryIcon(transaction.categoryId) as LucideIcon);
+          : (getCategoryIcon(transaction.categoryId, categories) as LucideIcon);
   return <Icon className={className} strokeWidth={2} aria-hidden />;
 }
 
 export function TransactionRow({ transaction, href }: { transaction: Transaction; href?: string }) {
   const context = useDescribeContext();
-  const meta = getCategoryMeta(transaction.categoryId);
+  const categories = useSmartSpendStore((state) => state.data.categories);
+  const meta = getCategoryMeta(transaction.categoryId, categories);
   const color = colorFor(
     transaction.type === "transfer"
       ? "indigo"

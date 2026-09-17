@@ -10,7 +10,7 @@ import { formatMonthLabel } from "@/app/forms/month";
 import { MonthPicker } from "@/components/summary/summary";
 import { BudgetForm } from "@/app/forms/budget-form";
 import { useSmartSpendStore } from "@/app/store";
-import { categoryLabel, EXPENSE_CATEGORIES, getCategoryIcon, getCategoryMeta } from "@/domain/categories";
+import { categoryLabel, getCategoryIcon, getCategoryMeta } from "@/domain/categories";
 import { formatIDR } from "@/domain/money";
 import { calculateBudgetUsage, calculateCategoryBreakdown, currentMonthKey } from "@/domain/selectors";
 import { colorFor } from "@/components/ui/theme";
@@ -19,8 +19,8 @@ import { isMonthKey } from "@/domain/calendar";
 import { cn } from "@/lib/cn";
 import type { Budget } from "@/domain/models";
 
-function renderCategoryIcon(categoryId: string | null | undefined, className?: string) {
-  const Icon = getCategoryIcon(categoryId);
+function renderCategoryIcon(categoryId: string | null | undefined, categories: Parameters<typeof getCategoryIcon>[1], className?: string) {
+  const Icon = getCategoryIcon(categoryId, categories);
   return <Icon className={className} strokeWidth={2} aria-hidden />;
 }
 
@@ -158,7 +158,7 @@ function BudgetsContent() {
 
             <ul className="flex flex-col gap-2">
               {usages.map((usage) => {
-                const meta = getCategoryMeta(usage.budget.categoryId);
+                const meta = getCategoryMeta(usage.budget.categoryId, data.categories);
                 const color = colorFor(meta?.color);
 
                 const stateInfo = usage.overBudget
@@ -190,11 +190,11 @@ function BudgetsContent() {
                             color.border,
                           )}
                         >
-                          {renderCategoryIcon(usage.budget.categoryId, cn("h-4 w-4", color.text))}
+                          {renderCategoryIcon(usage.budget.categoryId, data.categories, cn("h-4 w-4", color.text))}
                         </span>
                         <div className="min-w-0">
                           <p className="truncate text-[14.5px] font-bold text-ink">
-                            {categoryLabel(usage.budget.categoryId)}
+                            {categoryLabel(usage.budget.categoryId, "Tanpa kategori", data.categories)}
                           </p>
                           <p className="text-[12px] tabular text-muted">
                             Terpakai {formatIDR(usage.spent)} dari {formatIDR(usage.limit)}
@@ -207,7 +207,7 @@ function BudgetsContent() {
                     <ProgressBar
                       percent={usage.percent}
                       tone={stateInfo.tone}
-                      label={`Budget ${categoryLabel(usage.budget.categoryId)}`}
+                      label={`Budget ${categoryLabel(usage.budget.categoryId, "Tanpa kategori", data.categories)}`}
                     />
 
                     <div className="flex items-center justify-between gap-2 text-[12px]">
@@ -236,7 +236,7 @@ function BudgetsContent() {
                           variant="ghost"
                           className="h-8 px-2.5 text-[12px]"
                           onClick={() => setEditingId(editingId === usage.budget.id ? null : usage.budget.id)}
-                          aria-label={`Ubah budget ${categoryLabel(usage.budget.categoryId)}`}
+                          aria-label={`Ubah budget ${categoryLabel(usage.budget.categoryId, "Tanpa kategori", data.categories)}`}
                         >
                           <Pencil className="h-3 w-3" aria-hidden />
                           {editingId === usage.budget.id ? "Tutup" : "Ubah"}
@@ -246,7 +246,7 @@ function BudgetsContent() {
                           variant="ghost"
                           className="h-8 px-2.5 text-[12px] text-muted hover:text-expense"
                           onClick={() => setConfirmDelete(usage.budget)}
-                          aria-label={`Hapus budget ${categoryLabel(usage.budget.categoryId)}`}
+                          aria-label={`Hapus budget ${categoryLabel(usage.budget.categoryId, "Tanpa kategori", data.categories)}`}
                         >
                           <Trash2 className="h-3 w-3" aria-hidden />
                           Hapus
@@ -280,7 +280,7 @@ function BudgetsContent() {
             <ul className="flex flex-col gap-1.5">
               {unbudgeted.map((entry) => (
                 <li key={entry.categoryId ?? "none"} className="flex items-center justify-between gap-2 text-[13px]">
-                  <span className="truncate text-ink">{categoryLabel(entry.categoryId)}</span>
+                  <span className="truncate text-ink">{categoryLabel(entry.categoryId, "Tanpa kategori", data.categories)}</span>
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="tabular font-semibold text-ink">{formatIDR(entry.amount)}</span>
                     <Link
@@ -297,13 +297,13 @@ function BudgetsContent() {
         ) : null}
 
         <p className="px-1 text-[11.5px] leading-relaxed text-muted">
-          Kategori yang tersedia: {EXPENSE_CATEGORIES.length} (Makanan, Transportasi, …). Budget lama tidak otomatis
+          Kategori yang tersedia: {data.categories.filter((category) => category.type === "expense" && category.archivedAt == null).length} (Makanan, Transportasi, …). Budget lama tidak otomatis
           tersalin ke bulan baru — buat ulang lewat layar ini.
         </p>
 
         <ConfirmDialog
           open={confirmDelete !== null}
-          title={`Hapus budget ${confirmDelete ? categoryLabel(confirmDelete.categoryId) : ""}?`}
+          title={`Hapus budget ${confirmDelete ? categoryLabel(confirmDelete.categoryId, "Tanpa kategori", data.categories) : ""}?`}
           description="Hanya batas anggarannya yang dihapus. Seluruh transaksi pengeluaran tetap utuh di catatan keuangan."
           confirmLabel="Hapus"
           onConfirm={() => {

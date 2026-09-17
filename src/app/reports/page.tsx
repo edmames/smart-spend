@@ -68,7 +68,7 @@ function ReportsBody({ monthKey, onChangeMonth }: { monthKey: string; onChangeMo
 
         {/* Still show trend and budget empty states for usefulness */}
         <SixMonthTrendCard trend={report.trend} monthKey={monthKey} />
-        <BudgetVsActualCard usages={report.budgetUsages} monthKey={monthKey} monthLabel={monthLabel} />
+        <BudgetVsActualCard usages={report.budgetUsages} monthKey={monthKey} monthLabel={monthLabel} categories={data.categories} />
         <MoneyFlowCard flow={report.moneyFlow} monthLabel={monthLabel} />
       </>
     );
@@ -85,11 +85,11 @@ function ReportsBody({ monthKey, onChangeMonth }: { monthKey: string; onChangeMo
         monthLabel={monthLabel}
       />
 
-      <ExpenseByCategoryCard entries={report.expenseByCategory} monthKey={monthKey} monthLabel={monthLabel} />
+      <ExpenseByCategoryCard entries={report.expenseByCategory} monthKey={monthKey} monthLabel={monthLabel} categories={data.categories} />
 
       <SixMonthTrendCard trend={report.trend} monthKey={monthKey} />
 
-      <BudgetVsActualCard usages={report.budgetUsages} monthKey={monthKey} monthLabel={monthLabel} />
+      <BudgetVsActualCard usages={report.budgetUsages} monthKey={monthKey} monthLabel={monthLabel} categories={data.categories} />
 
       <MoneyFlowCard flow={report.moneyFlow} monthLabel={monthLabel} />
     </>

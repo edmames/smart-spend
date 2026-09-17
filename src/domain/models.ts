@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { MAX_MONEY, MIN_MONEY } from "@/domain/money";
+import { CATEGORY_ICON_IDS } from "@/domain/categories";
 import { isMonthKey, parseCalendarDate } from "@/domain/calendar";
 
 /**
@@ -53,6 +54,33 @@ const nonEmptyTextSchema = (min: number, max: number, label: string) =>
     .trim()
     .min(min, { message: `${label} minimal ${min} karakter.` })
     .max(max, { message: `${label} maksimal ${max} karakter.` });
+
+
+/* -------------------------------------------------------------------------- */
+/* Category                                                                    */
+/* -------------------------------------------------------------------------- */
+
+export const CATEGORY_TYPES = ["expense", "income"] as const;
+
+export const categorySchema = z
+  .object({
+    id: ID_SCHEMA,
+    label: nonEmptyTextSchema(1, 40, "Nama kategori"),
+    type: z.enum(CATEGORY_TYPES, { message: "Jenis kategori tidak valid." }),
+    icon: z.enum(CATEGORY_ICON_IDS, { message: "Icon kategori tidak valid." }),
+    color: z
+      .enum(["rose", "orange", "amber", "emerald", "teal", "sky", "indigo", "violet", "fuchsia", "slate", "lime", "cyan", "blue", "yellow"])
+      .default("slate"),
+    createdAt: DATE_TIME_SCHEMA,
+    updatedAt: DATE_TIME_SCHEMA,
+    archivedAt: z.string().nullable().optional(),
+  })
+  .strict();
+export type Category = z.infer<typeof categorySchema>;
+
+export function isActiveCategory(category: Category): boolean {
+  return category.archivedAt == null;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Wallet                                                                      */
@@ -253,6 +281,7 @@ export type NewRecord<T> = Omit<T, "id" | "createdAt" | "updatedAt"> & {
 export type NewWallet = NewRecord<Wallet>;
 export type NewSavingsTarget = NewRecord<SavingsTarget>;
 export type NewBudget = NewRecord<Budget>;
+export type NewCategory = NewRecord<Category>;
 export type NewTransaction = NewRecord<Transaction>;
 
 /* -------------------------------------------------------------------------- */
@@ -268,3 +297,4 @@ export const appSettingsSchema = z
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
 export const DEFAULT_SETTINGS: AppSettings = { currency: "IDR" };
+

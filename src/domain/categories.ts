@@ -67,6 +67,9 @@ export interface CategoryMeta {
   /** Icon identifier; resolved to a component through `getCategoryIcon`. */
   icon: string;
   color: ChartColorId;
+  createdAt?: string;
+  updatedAt?: string;
+  archivedAt?: string | null;
 }
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -114,25 +117,73 @@ export const ALL_CATEGORIES: readonly CategoryMeta[] = [
   ...INCOME_CATEGORIES,
 ];
 
+export const DEFAULT_CATEGORIES: readonly CategoryMeta[] = ALL_CATEGORIES;
+
+export const CATEGORY_ICON_OPTIONS: readonly { id: string; label: string }[] = [
+  { id: "utensils", label: "Makanan" },
+  { id: "bus", label: "Transportasi" },
+  { id: "shopping", label: "Belanja" },
+  { id: "play", label: "Hiburan" },
+  { id: "receipt", label: "Tagihan" },
+  { id: "heart", label: "Kesehatan" },
+  { id: "education", label: "Pendidikan" },
+  { id: "house", label: "Rumah" },
+  { id: "album", label: "Langganan" },
+  { id: "salary", label: "Gaji" },
+  { id: "business", label: "Usaha" },
+  { id: "bonus", label: "Bonus" },
+  { id: "gift", label: "Hadiah" },
+  { id: "investment", label: "Investasi" },
+  { id: "dots", label: "Lainnya" },
+];
+
+export const CATEGORY_ICON_IDS = CATEGORY_ICON_OPTIONS.map((option) => option.id) as [string, ...string[]];
+
 const CATEGORY_BY_ID = new Map<string, CategoryMeta>(ALL_CATEGORIES.map((c) => [c.id, c]));
 
-export function getCategoryMeta(categoryId: string | null | undefined): CategoryMeta | undefined {
+export function getCategoryMeta(
+  categoryId: string | null | undefined,
+  categories: readonly CategoryMeta[] = ALL_CATEGORIES,
+): CategoryMeta | undefined {
   if (!categoryId) return undefined;
-  return CATEGORY_BY_ID.get(categoryId);
+  return categories.find((category) => category.id === categoryId) ?? CATEGORY_BY_ID.get(categoryId);
 }
 
-export function categoriesForType(type: CategoryType): readonly CategoryMeta[] {
-  return type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+export function categoriesForType(
+  type: CategoryType,
+  categories: readonly CategoryMeta[] = ALL_CATEGORIES,
+): readonly CategoryMeta[] {
+  return categories.filter((category) => category.type === type);
 }
 
-export function categoryLabel(categoryId: string | null | undefined, fallback = "Tanpa kategori"): string {
-  return getCategoryMeta(categoryId)?.label ?? fallback;
+export function activeCategoriesForType(
+  type: CategoryType,
+  categories: readonly (CategoryMeta & { archivedAt?: string | null })[] = ALL_CATEGORIES,
+): readonly CategoryMeta[] {
+  return categories.filter((category) => category.type === type && category.archivedAt == null);
 }
 
-export function getCategoryIcon(categoryId: string | null | undefined): LucideIcon {
-  const meta = getCategoryMeta(categoryId);
+export function categoryLabel(
+  categoryId: string | null | undefined,
+  fallback = "Tanpa kategori",
+  categories: readonly CategoryMeta[] = ALL_CATEGORIES,
+): string {
+  return getCategoryMeta(categoryId, categories)?.label ?? fallback;
+}
+
+export function getCategoryIcon(categoryId: string | null | undefined, categories: readonly CategoryMeta[] = ALL_CATEGORIES): LucideIcon {
+  const meta = getCategoryMeta(categoryId, categories);
   if (!meta) return Sparkles;
   return CATEGORY_ICONS[meta.icon] ?? Wallet;
+}
+
+export function getCategoryIconById(iconId: string | null | undefined): LucideIcon {
+  if (!iconId) return Wallet;
+  return CATEGORY_ICONS[iconId] ?? Wallet;
+}
+
+export function isSupportedCategoryIcon(iconId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(CATEGORY_ICONS, iconId);
 }
 
 /** Icons reused by non-category surfaces (wallet types, transaction types). */
@@ -187,3 +238,4 @@ export const TRANSACTION_TYPE_SIGN: Record<TransactionType, "+" | "-" | "±"> = 
 
 export const SAVINGS_TARGET_ICON = PiggyBank;
 export const SAVINGS_GOAL_REACHED_ICON = PartyPopper;
+

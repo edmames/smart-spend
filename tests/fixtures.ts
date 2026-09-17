@@ -1,4 +1,5 @@
 import type { Budget, SavingsTarget, Transaction, Wallet } from "@/domain/models";
+import { seedDefaultCategories } from "@/repository/storage-schema";
 import type { PersistedData } from "@/repository/storage-schema";
 import { DEFAULT_SETTINGS } from "@/domain/models";
 
@@ -93,8 +94,9 @@ export function makeTx(overrides: TxOverrides = {}): Transaction {
 /** Empty, valid dataset (spec §27: the app starts empty, never with demo data). */
 export function emptyData(overrides: Partial<PersistedData> = {}): PersistedData {
   return {
-    version: 2,
+    version: 3,
     wallets: [],
+    categories: seedDefaultCategories(),
     transactions: [],
     savingsTargets: [],
     budgets: [],

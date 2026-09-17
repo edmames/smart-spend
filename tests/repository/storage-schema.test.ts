@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ALL_CATEGORIES, getCategoryMeta } from "@/domain/categories";
 import {
   CORRUPT_BACKUP_PREFIX,
   EMPTY_DATA,
@@ -9,6 +10,7 @@ import {
   parsePersistedData,
   parsePersistedJson,
   persistedDataSchema,
+  seedDefaultCategories,
   serializePersistedData,
 } from "@/repository/storage-schema";
 import { at, emptyData, makeBudget, makeTarget, makeTx, makeWallet, on } from "../fixtures";
@@ -28,6 +30,7 @@ describe("persistedDataSchema (stored shape)", () => {
       ],
       savingsTargets: [makeTarget("s1")],
       budgets: [makeBudget("makanan", "2026-08", 1000000)],
+      categories: seedDefaultCategories(),
       settings: { currency: "IDR" },
     };
     expect(persistedDataSchema.safeParse(payload).success).toBe(true);
@@ -81,6 +84,7 @@ describe("createEmptyData", () => {
       transactions: [],
       savingsTargets: [],
       budgets: [],
+      categories: seedDefaultCategories(),
       settings: null,
     });
     first.wallets.push(makeWallet("w1"));
@@ -93,7 +97,7 @@ describe("migratePayload", () => {
     const result = migratePayload({ wallets: [], transactions: [] });
     expect(result).not.toBeNull();
     expect(result?.payload.version).toBe(STORAGE_VERSION);
-    expect(result?.applied.map((migration) => migration.to)).toEqual([1, STORAGE_VERSION]);
+    expect(result?.applied.map((migration) => migration.to)).toEqual([1, 2, STORAGE_VERSION]);
   });
 
   it("converts v1 transaction instants into Asia/Jakarta calendar days (v1 -> v2)", () => {
@@ -111,7 +115,64 @@ describe("migratePayload", () => {
     expect((migrated?.payload.transactions as { date: string }[])[0]?.date).toBe("2026-08-02");
     expect(migrated?.applied.map((migration) => migration.description)).toEqual([
       expect.stringMatching(/calendar dates/i),
+      expect.stringMatching(/category records/i),
     ]);
+  });
+
+  it("migrates a realistic v2 dataset to v3 without rewriting financial records", () => {
+    const legacyV2 = {
+      version: 2,
+      wallets: [
+        makeWallet("bca", { name: "BCA" }),
+        makeWallet("cash", { name: "Cash", type: "cash" }),
+      ],
+      transactions: [
+        makeTx({ id: "open-bca", type: "opening_balance", amount: 1_000_000, destinationWalletId: "bca", date: on(2026, 9, 1), categoryId: null }),
+        makeTx({ id: "salary", type: "income", amount: 2_500_000, destinationWalletId: "bca", categoryId: "gaji", date: on(2026, 9, 2) }),
+        makeTx({ id: "food", type: "expense", amount: 125_000, sourceWalletId: "bca", categoryId: "makanan", date: on(2026, 9, 3) }),
+        makeTx({ id: "transfer", type: "transfer", amount: 200_000, sourceWalletId: "bca", destinationWalletId: "cash", categoryId: null, date: on(2026, 9, 4) }),
+      ],
+      savingsTargets: [makeTarget("liburan", 5_000_000)],
+      budgets: [makeBudget("makanan", "2026-09", 1_000_000, { id: "budget-food" })],
+      settings: { currency: "IDR" },
+    };
+
+    const migrated = migratePayload(legacyV2);
+    expect(migrated).not.toBeNull();
+    expect(migrated?.applied.map((migration) => migration.to)).toEqual([STORAGE_VERSION]);
+    const parsed = parsePersistedData(migrated?.payload);
+    if (!parsed.ok) throw new Error(JSON.stringify(parsed.failure.issues));
+
+    expect(parsed.data.wallets).toEqual(legacyV2.wallets);
+    expect(parsed.data.transactions).toEqual(legacyV2.transactions);
+    expect(parsed.data.savingsTargets).toEqual(legacyV2.savingsTargets);
+    expect(parsed.data.budgets).toEqual(legacyV2.budgets);
+    expect(parsed.data.transactions.map((transaction) => transaction.id)).toEqual(["open-bca", "salary", "food", "transfer"]);
+    expect(parsed.data.transactions.map((transaction) => transaction.categoryId)).toEqual([null, "gaji", "makanan", null]);
+    expect(parsed.data.budgets.map((budget) => budget.categoryId)).toEqual(["makanan"]);
+    expect(parsed.data.transactions.map((transaction) => transaction.amount)).toEqual([1_000_000, 2_500_000, 125_000, 200_000]);
+    expect(parsed.data.transactions.map((transaction) => transaction.date)).toEqual(["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04"]);
+    expect(parsed.data.categories.map((category) => category.id)).toEqual(seedDefaultCategories().map((category) => category.id));
+    expect(new Set(parsed.data.categories.map((category) => category.id)).size).toBe(parsed.data.categories.length);
+
+    const migratedAgain = migratePayload(parsed.data);
+    expect(migratedAgain?.applied).toEqual([]);
+    expect(migratedAgain?.payload).toEqual(parsed.data);
+  });
+
+  it("keeps every legacy built-in category id resolvable after migration", () => {
+    const migrated = migratePayload({ version: 2, wallets: [], transactions: [], savingsTargets: [], budgets: [], settings: null });
+    const parsed = parsePersistedData(migrated?.payload);
+    if (!parsed.ok) throw new Error(JSON.stringify(parsed.failure.issues));
+
+    for (const legacy of ALL_CATEGORIES) {
+      expect(getCategoryMeta(legacy.id, parsed.data.categories)).toMatchObject({
+        id: legacy.id,
+        label: legacy.label,
+        type: legacy.type,
+        icon: legacy.icon,
+      });
+    }
   });
 
   it("refuses a newer schema version instead of silently rewriting it", () => {

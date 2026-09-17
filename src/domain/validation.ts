@@ -5,6 +5,7 @@ import {
   isActiveSavingsTarget,
   isActiveWallet,
   type Budget,
+  type Category,
   type SavingsTarget,
   type Transaction,
   type Wallet,
@@ -42,6 +43,7 @@ export interface LedgerData {
   transactions: readonly Transaction[];
   savingsTargets: readonly SavingsTarget[];
   budgets: readonly Budget[];
+  categories?: readonly Category[];
 }
 
 /** Same key used by storage validation so both layers agree on what "consistent" means. */
@@ -67,6 +69,7 @@ export const ledgerInvariants = (data: LedgerData) => {
   collect([...data.savingsTargets], "savings");
   collect([...data.budgets], "budget");
 
+  const categories = data.categories ?? [];
   const walletIds = new Set(data.wallets.map((wallet) => wallet.id));
   const savingsIds = new Set(data.savingsTargets.map((target) => target.id));
 
@@ -90,7 +93,7 @@ export const ledgerInvariants = (data: LedgerData) => {
         transactionId: transaction.id,
       });
     }
-    if (transaction.categoryId && !getCategoryMeta(transaction.categoryId)) {
+    if (transaction.categoryId && !getCategoryMeta(transaction.categoryId, categories)) {
       errors.push({
         code: "UNKNOWN_CATEGORY",
         message: `Transaksi ${transaction.id} memakai kategori yang tidak dikenal (${transaction.categoryId}).`,
@@ -100,7 +103,7 @@ export const ledgerInvariants = (data: LedgerData) => {
   }
 
   for (const budget of data.budgets) {
-    if (!getCategoryMeta(budget.categoryId) || getCategoryMeta(budget.categoryId)?.type !== "expense") {
+    if (!getCategoryMeta(budget.categoryId, categories) || getCategoryMeta(budget.categoryId, categories)?.type !== "expense") {
       errors.push({
         code: "UNKNOWN_CATEGORY",
         message: `Budget ${budget.id} memakai kategori pengeluaran yang tidak dikenal.`,
@@ -229,6 +232,7 @@ export function validateLedgerChronology(
 export interface ValidateTransactionContext {
   wallets: readonly Wallet[];
   savingsTargets: readonly SavingsTarget[];
+  categories?: readonly Category[];
   /**
    * Ledger the record would live in, **including** the record being validated —
    * build it with `ledgerWithCandidate` so the merged list is sorted. "Available
@@ -249,6 +253,7 @@ export function validateTransaction(
 ): Result<Transaction> {
   const wallets = new Map(context.wallets.map((wallet) => [wallet.id, wallet]));
   const savings = new Map(context.savingsTargets.map((target) => [target.id, target]));
+  const categories = context.categories ?? [];
   const errors: DomainError[] = [];
 
   const push = (error: DomainError) => errors.push(error);
@@ -397,7 +402,7 @@ export function validateTransaction(
   }
 
   // --- category / type agreement -------------------------------------------
-  const meta = getCategoryMeta(transaction.categoryId);
+  const meta = getCategoryMeta(transaction.categoryId, categories);
   if (transaction.categoryId) {
     if (!meta) {
       push({
@@ -409,7 +414,7 @@ export function validateTransaction(
       push({
         code: "CATEGORY_TYPE_MISMATCH",
         field: "category",
-        message: `Kategori "${categoryLabel(transaction.categoryId)}" adalah kategori ${meta.type === "income" ? "pemasukan" : "pengeluaran"} dan tidak bisa dipakai di transaksi ini.`,
+        message: `Kategori "${categoryLabel(transaction.categoryId, "Tanpa kategori", categories)}" adalah kategori ${meta.type === "income" ? "pemasukan" : "pengeluaran"} dan tidak bisa dipakai di transaksi ini.`,
       });
     }
   } else if (transaction.type === "expense") {

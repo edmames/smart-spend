@@ -2,12 +2,14 @@ import { z } from "zod";
 import { calendarDateFromInstant } from "@/domain/calendar";
 import {
   appSettingsSchema,
+  categorySchema,
   budgetSchema,
   savingsTargetSchema,
   transactionSchema,
   walletSchema,
   DATE_TIME_SCHEMA,
 } from "@/domain/models";
+import { DEFAULT_CATEGORIES } from "@/domain/categories";
 
 /**
  * SmartSpend — versioned persistence schema (v1).
@@ -25,7 +27,7 @@ import {
  * silently rewritten.
  */
 
-export const STORAGE_VERSION = 2 as const;
+export const STORAGE_VERSION = 3 as const;
 // Keep the installed storage key so v1 users are migrated instead of appearing empty.
 export const STORAGE_KEY = "smarts-end.v1";
 export const CORRUPT_BACKUP_PREFIX = `${STORAGE_KEY}.corrupt.`;
@@ -35,6 +37,7 @@ export const persistedDataSchema = z
   .object({
     version: z.literal(STORAGE_VERSION),
     wallets: z.array(walletSchema),
+    categories: z.array(categorySchema),
     transactions: z.array(transactionSchema),
     savingsTargets: z.array(savingsTargetSchema),
     budgets: z.array(budgetSchema),
@@ -47,11 +50,21 @@ export type PersistedData = z.infer<typeof persistedDataSchema>;
 export const EMPTY_DATA: PersistedData = {
   version: STORAGE_VERSION,
   wallets: [],
+  categories: seedDefaultCategories(),
   transactions: [],
   savingsTargets: [],
   budgets: [],
   settings: null,
 };
+
+export function seedDefaultCategories(now = "2026-01-01T00:00:00.000Z") {
+  return DEFAULT_CATEGORIES.map((category) => ({
+    ...category,
+    createdAt: now,
+    updatedAt: now,
+    archivedAt: null,
+  }));
+}
 
 /** A brand new user starts with zero of everything. No demo data, ever. */
 export function createEmptyData(): PersistedData {
@@ -82,6 +95,7 @@ export const MIGRATIONS: readonly Migration[] = [
     migrate: (payload) => ({
       version: 1,
       wallets: payload.wallets ?? [],
+      categories: payload.categories ?? seedDefaultCategories(),
       transactions: payload.transactions ?? [],
       savingsTargets: payload.savingsTargets ?? [],
       budgets: payload.budgets ?? [],
@@ -102,6 +116,16 @@ export const MIGRATIONS: readonly Migration[] = [
         if (!DATE_TIME_SCHEMA.safeParse(record.date).success) return record;
         return { ...record, date: calendarDateFromInstant(new Date(record.date as string)) };
       }) : payload.transactions,
+    }),
+  },
+  {
+    from: 2,
+    to: 3,
+    description: "Seed manageable category records while preserving existing category ids.",
+    migrate: (payload) => ({
+      ...payload,
+      version: 3,
+      categories: Array.isArray(payload.categories) ? payload.categories : seedDefaultCategories(),
     }),
   },
 ] as const;

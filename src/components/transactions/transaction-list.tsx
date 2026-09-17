@@ -9,7 +9,7 @@ import { Badge, Button, Card, EmptyState } from "@/components/ui/layout";
 import { ChipToggle } from "@/components/ui/forms";
 import { TransactionRow } from "@/components/transactions/transaction-row";
 import { cn } from "@/lib/cn";
-import { ALL_CATEGORIES, TRANSACTION_TYPE_LABELS, type TransactionType } from "@/domain/categories";
+import { TRANSACTION_TYPE_LABELS, type TransactionType } from "@/domain/categories";
 import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from "@/domain/models";
 import { filterTransactions, rangeForPeriod } from "@/domain/selectors";
 import type { Transaction } from "@/domain/models";
@@ -59,7 +59,7 @@ export function useFilteredTransactions(
         from: range ? range.from : from,
         to: range ? range.to : to,
       },
-      { walletNames: derived.walletNameById, categoryLabels: categoryLabelMap() },
+      { walletNames: derived.walletNameById, categoryLabels: categoryLabelMap(data.categories) },
     );
 
     if (scopes.savingsTargetIds?.length) {
@@ -68,11 +68,11 @@ export function useFilteredTransactions(
     }
 
     return items.reverse();
-  }, [data.transactions, filter, scopes.walletIds, scopes.savingsTargetIds, derived.walletNameById]);
+  }, [data.transactions, data.categories, filter, scopes.walletIds, scopes.savingsTargetIds, derived.walletNameById]);
 }
 
-function categoryLabelMap(): Map<string, string> {
-  return new Map(ALL_CATEGORIES.map((category) => [category.id, category.label]));
+function categoryLabelMap(categories: readonly { id: string; label: string }[]): Map<string, string> {
+  return new Map(categories.map((category) => [category.id, category.label]));
 }
 
 export function countActiveFilters(filter: TransactionFilterState): number {
@@ -200,6 +200,8 @@ export function TransactionFilterPanel({
   onReset?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const categories = useSmartSpendStore((state) => state.data.categories);
+  const categoryLabels = categoryLabelMap(categories);
   const active = countActiveFilters(filter);
   const clearAll = () => {
     onChange(EMPTY_FILTER);
@@ -318,7 +320,7 @@ export function TransactionFilterPanel({
 
           <ChipToggle<string>
             label="Kategori"
-            options={ALL_CATEGORIES.map((category) => ({ value: category.id, label: category.label }))}
+            options={categories.map((category) => ({ value: category.id, label: `${category.label}${category.archivedAt ? " (arsip)" : ""}` }))}
             selected={filter.categoryIds}
             onToggle={(value) => toggle("categoryIds", value)}
           />
@@ -353,7 +355,7 @@ export function TransactionFilterPanel({
           ))}
           {filter.categoryIds.map((id) => (
             <Badge key={id} tone="neutral">
-              {categoryLabelMap().get(id) ?? id}
+              {categoryLabels.get(id) ?? id}
             </Badge>
           ))}
           {filter.walletIds.map((id) => (

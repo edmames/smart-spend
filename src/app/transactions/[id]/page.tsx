@@ -36,6 +36,7 @@ function TransactionDetail({ id }: { id: string }) {
   const transaction = useSmartSpendStore((state) => state.data.transactions.find((t) => t.id === id));
   const deleteTransaction = useSmartSpendStore((state) => state.deleteTransaction);
   const wallets = useSmartSpendStore((state) => state.data.wallets);
+  const categories = useSmartSpendStore((state) => state.data.categories);
   const context = useDescribeContext();
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -115,7 +116,7 @@ function TransactionDetail({ id }: { id: string }) {
         <dl className="flex flex-col divide-y divide-line/70 text-[13px]">
           <Row label="Jenis">{TRANSACTION_TYPE_LABELS[transaction.type]}</Row>
           <Row label="Uraian">{summary}</Row>
-          {transaction.categoryId ? <Row label="Kategori">{categoryLabel(transaction.categoryId)}</Row> : null}
+          {transaction.categoryId ? <Row label="Kategori">{categoryLabel(transaction.categoryId, "Tanpa kategori", categories)}</Row> : null}
           {transaction.paymentMethod ? (
             <Row label="Metode">{PAYMENT_METHOD_LABELS[transaction.paymentMethod]}</Row>
           ) : null}

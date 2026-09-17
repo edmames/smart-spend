@@ -123,6 +123,15 @@ describe("Transactions Phase 2C UX", () => {
     window.history.replaceState(null, "", "/transactions");
   });
 
+  it("shows Kelola kategori link in primary actions", () => {
+    seedData();
+    render(<TransactionsPage />);
+
+    expect(screen.getByRole("link", { name: "Catat" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Kelola kategori" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Kelola kategori" })).toHaveAttribute("href", "/categories");
+  });
+
   it("renders every transaction meaning without making internal movements look like income or expense", () => {
     seedData();
     const data = useSmartSpendStore.getState().data;
@@ -373,6 +382,18 @@ describe("Transactions Phase 2C UX", () => {
     expect(within(picker).getByRole("button", { name: "Transfer" })).toHaveAttribute("aria-pressed", "true");
     expect(within(picker).getByRole("button", { name: "Keluar" })).toHaveAttribute("aria-pressed", "false");
     expect(within(block).getByText(/memindahkan uang antar dompet/i)).toBeInTheDocument();
+  });
+
+  it("shows Kelola kategori link in transaction form for expense/create", async () => {
+    seedData();
+    render(<TransactionForm mode="create" initialKind="expense" />);
+
+    expect(screen.getByLabelText(/^Kategori/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Kelola kategori" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Kelola kategori" })).toHaveAttribute("href", "/categories");
+
+    await userEvent.click(screen.getByRole("button", { name: "Masuk" }));
+    expect(screen.getByRole("link", { name: "Kelola kategori" })).toHaveAttribute("href", "/categories");
   });
 });
 
