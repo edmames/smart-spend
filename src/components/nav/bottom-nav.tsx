@@ -6,7 +6,13 @@ import { ChartPie, Cog, LayoutDashboard, Receipt, Wallet } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ICON_SIZE, ICON_STROKE } from "@/components/ui/layout";
 
-/** Primary destinations. Transaction creation lives in the Transaksi page header. */
+/**
+ * Primary destinations. Transaction creation lives in the Transaksi page header.
+ *
+ * Motion: press is a transform-only scale at `quick` (persistent chrome settles
+ * a little slower than a button, and the icon never jumps), so the labels stay
+ * put and the fixed geometry, safe-area padding and `aria-current` are untouched.
+ */
 
 export interface NavItem {
   label: string;
@@ -58,7 +64,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-control px-0.5 text-[10px] font-semibold leading-tight transition-colors",
+        "motion-press flex min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-control px-0.5 text-[10px] font-semibold leading-tight transition-[transform,color,background-color] duration-quick ease-standard",
         active ? "text-primary" : "text-muted hover:text-ink active:bg-elevated/60",
       )}
     >
