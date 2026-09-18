@@ -105,6 +105,10 @@ describe("Service Worker registration component", () => {
     expect(swRegisterSource).toMatch(/typeof window/);
   });
 
+  it("only registers in production builds", () => {
+    expect(swRegisterSource).toMatch(/process\.env\.NODE_ENV\s*!==?\s*"production"/);
+  });
+
   it("checks for serviceWorker in navigator", () => {
     expect(swRegisterSource).toMatch(/"serviceWorker" in navigator/);
   });

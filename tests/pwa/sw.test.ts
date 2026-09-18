@@ -37,6 +37,19 @@ describe("Service Worker: install behavior", () => {
     expect(swSource).toMatch(/manifest\.webmanifest/);
   });
 
+  it("pre-caches offline shell page during install", () => {
+    expect(swSource).toMatch(/OFFLINE_PAGE/);
+    expect(swSource).toMatch(/cache\.addAll/);
+  });
+
+  it("does NOT use a build-time precache manifest for Next.js chunks", () => {
+    // /_next/static/* assets enter Cache Storage only on first request (runtime),
+    // not during install. There is no __precacheManifest__ or workbox precache.
+    expect(swSource).not.toMatch(/precacheManifest/i);
+    expect(swSource).not.toMatch(/workbox/);
+    expect(swSource).not.toMatch(/self\.__precache/);
+  });
+
   it("calls skipWaiting on install for faster activation", () => {
     expect(swSource).toMatch(/skipWaiting/);
   });

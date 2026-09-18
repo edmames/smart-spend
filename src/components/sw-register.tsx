@@ -5,11 +5,14 @@ import { useEffect } from "react";
 /**
  * SmartSpend — Service Worker registration.
  *
- * Registers the PWA service worker from /sw.js. Runs only in the browser
- * (guarded by `typeof window`). The service worker handles offline shell
- * caching for static assets and navigation fallback; it does NOT read or
- * write localStorage — financial data remains solely managed by the
- * repository boundary in the page context.
+ * Registers the PWA service worker from /sw.js. Runs only in production builds
+ * (development does not register an SW, so dev never caches stale app assets).
+ * Also guarded by `typeof window` and `"serviceWorker" in navigator` for SSR safety.
+ *
+ * The service worker handles offline shell caching for static assets and
+ * navigation fallback; it does NOT read or write the browser's local storage —
+ * financial data remains solely managed by the repository boundary in the
+ * page context (src/repository/).
  *
  * On update, the new worker activates in the background; we avoid forced
  * reload loops and never clear localStorage.
@@ -18,6 +21,9 @@ const SW_URL = "/sw.js";
 
 export function SWRegister() {
   useEffect(() => {
+    // Do not register the service worker during development — it would
+    // cache and serve stale application assets and mask HMR issues.
+    if (process.env.NODE_ENV !== "production") return;
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
     let cancelled = false;

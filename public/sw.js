@@ -2,15 +2,27 @@
  * SmartSpend — Service Worker (Phase 2K PWA foundation)
  *
  * Architecture:
- *   - Static versioned assets (JS/CSS/fonts/icons): cache-first with stale-while-revalidate
+ *   - PRECACHED during install: manifest, icons, offline shell page (STATIC_ASSETS + OFFLINE_PAGE)
+ *   - RUNTIME-CACHED: Next.js build-output assets under /_next/static/* enter Cache
+ *     Storage on first request (cache-first with stale-while-revalidate). These are
+ *     immutable, content-hashed files so stale-while-revalidate is safe.
  *   - Navigation / HTML documents: network-first with offline fallback to cached shell
  *   - API/mutation requests: never cached, always pass through
  *   - The browser's local storage (the only financial data store) is NEVER
  *     read or written by this worker. The existing repository abstraction
  *     (src/repository/) in the page is the sole authority for financial data.
  *
- * The cache name includes a version string. Bumping CACHE_VERSION invalidates
- * the previous cache in the activate handler — it does NOT clear any user data.
+ * Cache names include a version string. Bumping CACHE_VERSION causes the
+ * activate handler to delete the old cache — it does NOT clear any user data.
+ *
+ * OFFLINE CAPABILITY (Part 1):
+ *   After one successful online visit, the offline shell (manifest, icons,
+ *   offline.html) is available offline. However, the full application UI
+ *   is NOT available offline because Next.js JS chunks under /_next/static/*
+ *   are only cached after they are fetched at least once. If a subsequent
+ *   offline visit navigates to a route whose JS chunks were never requested,
+ *   the SW will serve offline.html instead. Full app reopening offline
+ *   requires Part 2 precache manifest or explicit route precaching.
  */
 
 const CACHE_VERSION = "v1";
@@ -18,8 +30,9 @@ const CACHE_NAME = "smarts-shell-" + CACHE_VERSION;
 const OFFLINE_PAGE = "/offline.html";
 
 /**
- * Static assets safe to cache aggressively. These are build-output hashes,
- * so they are immutable and can be cache-first without update risk.
+ * Static assets safe to cache aggressively. These are pre-cached during
+ * install (cache.addAll) so they are immediately available offline after
+ * first visit — even before any JS chunk is requested.
  */
 const STATIC_ASSETS = [
   "/manifest.webmanifest",
@@ -73,7 +86,12 @@ function isNavigationRequest(request) {
 }
 
 /**
- * Determine if a request targets a static asset we can cache (by extension).
+ * Determine if a request targets a static asset we can runtime-cache
+ * (by extension or /_next/static path prefix).
+ *
+ * Note: /_next/static/* assets are NOT pre-cached during install. They
+ * enter Cache Storage on first request (runtime caching) — safe because
+ * they are content-hashed and immutable.
  */
 function isStaticAsset(request) {
   const url = new URL(request.url);
@@ -111,7 +129,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Static versioned assets: cache-first with stale-while-revalidate.
+  // Static versioned assets: runtime cache-first with stale-while-revalidate.
+  // These enter Cache Storage only after the first network request — they
+  // are NOT pre-cached during install (no build-time precache manifest).
   if (isStaticAsset(request) || STATIC_ASSETS.some((path) => url.pathname === path)) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
