@@ -326,13 +326,14 @@ function MoneyHubSection({
                   <span className={cn(ICON_CHIP, "h-8 w-8 bg-brand-soft text-brand-strong")}>
                     <Wallet className="h-[18px] w-[18px]" aria-hidden strokeWidth={ICON_STROKE.ui} />
                   </span>
+                  {/* Identity block. The balance is a sibling of this block (not a
+                      line inside it) so the row's `items-center` balances it against
+                      the two lines, instead of pinning it to the name's baseline. */}
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="flex min-w-0 items-baseline justify-between gap-2">
-                      <span className="truncate text-[13.5px] font-semibold text-ink">{row.wallet.name}</span>
-                      <span className="shrink-0 text-[13.5px] font-bold tabular text-ink">{money(row.balance)}</span>
-                    </span>
+                    <span className="truncate text-[13.5px] font-semibold text-ink">{row.wallet.name}</span>
                     <span className="metadata truncate leading-tight">{WALLET_TYPE_LABELS[row.wallet.type]}</span>
                   </span>
+                  <span className="shrink-0 text-[13.5px] font-bold tabular text-ink">{money(row.balance)}</span>
                   <ChevronRight className={cn(ICON_SIZE.sm, "shrink-0 text-subtle")} aria-hidden />
                 </Link>
               </li>

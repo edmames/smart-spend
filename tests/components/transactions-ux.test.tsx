@@ -1,24 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TransactionsPage from "@/app/transactions/page";
 import NewTransactionPage from "@/app/transactions/new/page";
+import DashboardPage from "@/app/page";
 import TransactionDetailPage from "@/app/transactions/[id]/page";
 import { TransactionForm } from "@/app/forms/transaction-form";
 import { TransactionRow } from "@/components/transactions/transaction-row";
 import { useSmartSpendStore, configureRepository } from "@/app/store";
 import { createLocalStorageRepository } from "@/repository/repository";
 import { MemoryStorageAdapter } from "@/repository/storage";
+import { calculateTotalMoney } from "@/domain/ledger";
 import { emptyData, makeTarget, makeTx, makeWallet, on, at } from "../fixtures";
 
 const push = vi.fn();
 const replace = vi.fn();
 let routeId = "expense";
+/** What the router would hand `useSearchParams()` for the current navigation. */
+let mockSearch = "";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace, refresh: vi.fn(), back: vi.fn() }),
   usePathname: () => "/transactions",
   useParams: () => ({ id: routeId }),
+  useSearchParams: () => new URLSearchParams(mockSearch),
 }));
 
 function seedData() {
@@ -120,6 +125,7 @@ describe("Transactions Phase 2C UX", () => {
     push.mockClear();
     replace.mockClear();
     routeId = "expense";
+    mockSearch = "";
     window.history.replaceState(null, "", "/transactions");
   });
 
@@ -397,5 +403,114 @@ describe("Transactions Phase 2C UX", () => {
   });
 });
 
+/**
+ * Phase 2N-A3.2 — the Dashboard Transfer shortcut must actually open the form as
+ * Transfer.
+ *
+ * These tests deliberately follow the Dashboard's own link instead of asserting
+ * that some string looks like "transfer": the href is parsed, its query string is
+ * handed to the create screen exactly as the router would, and the form that comes
+ * out of that has to be a Transfer form that saves a transfer.
+ */
+describe("Dashboard transaction deep links (Phase 2N-A3.2)", () => {
+  beforeEach(() => {
+    configureRepository(createLocalStorageRepository(new MemoryStorageAdapter()));
+    useSmartSpendStore.getState().resetStore(emptyData());
+    useSmartSpendStore.setState({ hydration: "ready" });
+    push.mockClear();
+    mockSearch = "";
+    window.history.replaceState(null, "", "/transactions");
+  });
 
+  /** Render the Dashboard and read a quick action's destination + query string. */
+  function dashboardActionHref(name: RegExp) {
+    const dashboard = render(<DashboardPage />);
+    const quickActions = screen.getByRole("region", { name: "Aksi cepat" });
+    const href = within(quickActions).getByRole("link", { name }).getAttribute("href") ?? "";
+    dashboard.unmount();
+    return href;
+  }
 
+  it("opens the form as Transfer when arriving from the Dashboard Transfer action", async () => {
+    seedData();
+    const href = dashboardActionHref(/Transfer/);
+    expect(href.startsWith("/transactions/new")).toBe(true);
+    mockSearch = new URL(href, "http://localhost").search.slice(1);
+    // The regression this guards: during a soft navigation the router has already
+    // rendered the new route while `window.location` still points at the previous
+    // screen, so the intent must come from the router — not from the global URL.
+    window.history.replaceState(null, "", "/");
+
+    render(<NewTransactionPage />);
+
+    // Transfer is selected on the very first render…
+    expect(screen.getByRole("button", { name: "Transfer", pressed: true })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Keluar", pressed: true })).not.toBeInTheDocument();
+    // …with the transfer shape: two wallets, no category, no payment method.
+    expect(screen.getByLabelText(/Dari dompet/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Ke dompet/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Kategori/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Metode pembayaran/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/total uang tetap/i)).toBeInTheDocument();
+
+    // And it saves a transfer, with total money unchanged (internal movement).
+    const before = useSmartSpendStore.getState().data;
+    const totalBefore = calculateTotalMoney(before.wallets, before.savingsTargets, before.transactions).total;
+    fireEvent.change(screen.getByLabelText(/Nominal/i), { target: { value: "100.000" } });
+    await userEvent.selectOptions(screen.getByLabelText(/Dari dompet/i), "bca");
+    await userEvent.selectOptions(screen.getByLabelText(/Ke dompet/i), "cash");
+    fireEvent.click(screen.getByRole("button", { name: "Simpan transaksi" }));
+
+    await waitFor(() =>
+      expect(useSmartSpendStore.getState().data.transactions.at(-1)).toMatchObject({ type: "transfer", amount: 100_000 }),
+    );
+    const after = useSmartSpendStore.getState().data;
+    expect(calculateTotalMoney(after.wallets, after.savingsTargets, after.transactions).total).toBe(totalBefore);
+  });
+
+  it("keeps the default Pengeluaran selection for a plain /transactions/new visit", () => {
+    seedData();
+    render(<NewTransactionPage />);
+
+    expect(screen.getByRole("button", { name: "Keluar", pressed: true })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Transfer", pressed: true })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/^Kategori/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Metode pembayaran/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Ke dompet/i)).not.toBeInTheDocument();
+  });
+
+  it("does not reset the deep-linked type back to the default after hydration", async () => {
+    seedData();
+    mockSearch = "kind=transfer";
+    render(<NewTransactionPage />);
+    expect(screen.getByRole("button", { name: "Transfer", pressed: true })).toBeInTheDocument();
+
+    // Any later re-render (hydration finishing, data arriving, a store write) must
+    // leave the choice where the deep link put it.
+    await act(async () => {
+      useSmartSpendStore.setState({ hydration: "ready" });
+      useSmartSpendStore.getState().updateSettings({ hideBalances: false });
+    });
+
+    expect(screen.getByRole("button", { name: "Transfer", pressed: true })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Keluar", pressed: true })).not.toBeInTheDocument();
+  });
+
+  it("still honours ?wallet= from a wallet detail screen", () => {
+    seedData();
+    mockSearch = "wallet=bca&kind=transfer";
+    render(<NewTransactionPage />);
+
+    expect(screen.getByText(/Terpilih dari dompet/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Transfer", pressed: true })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Dari dompet/i)).toHaveValue("bca");
+  });
+
+  it("ignores an unknown kind instead of losing the default", () => {
+    seedData();
+    mockSearch = "kind=tidak-ada";
+    render(<NewTransactionPage />);
+
+    expect(screen.getByRole("button", { name: "Keluar", pressed: true })).toBeInTheDocument();
+  });
+});
