@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Eye, EyeOff, Info } from "lucide-react";
-import { Card, ICON_SIZE, ICON_STROKE, SectionTitle } from "@/components/ui/layout";
+import { useMemo, type ReactNode } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
+import { Card, ICON_SIZE, ICON_STROKE } from "@/components/ui/layout";
 import { cn } from "@/lib/cn";
 import { formatIDR, formatSignedIDR } from "@/domain/money";
 import { type CategoryMeta } from "@/domain/categories";
@@ -54,14 +54,28 @@ export function MonthPicker({
   );
 }
 
+/**
+ * The Dashboard hero — total money as ONE financial overview.
+ *
+ * The amount is the dominant figure on Beranda; the derivation
+ * (Dompet + Tabungan = Total) sits directly under it, and `children` renders the
+ * current-month strip inside the same surface behind one internal hairline. The
+ * two therefore read as a single overview instead of two unrelated cards.
+ *
+ * Everything here is derived input passed in — the component never computes a
+ * balance — and every figure obeys the hide-balances preference.
+ */
 export function TotalMoneyCard({
   total,
   walletTotal,
   savingsTotal,
+  children,
 }: {
   total: number;
   walletTotal: number;
   savingsTotal: number;
+  /** Current-month context rendered inside the hero (`MonthlySummaryStrip`). */
+  children?: ReactNode;
 }) {
   const hideBalances = useHideBalances();
   const updateSettings = useSmartSpendStore((state) => state.updateSettings);
@@ -71,62 +85,68 @@ export function TotalMoneyCard({
 
   return (
     <section aria-labelledby="total-money-title" className="total-money-hero overflow-hidden rounded-surface border">
-      <div className="px-4 pb-3.5 pt-4">
+      <div className="px-4 pb-2.5 pt-3.5">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2
-              id="total-money-title"
-              className="total-money-hero__eyebrow text-[11px] font-bold uppercase tracking-[0.08em]"
-            >
-              Total uang Anda
-            </h2>
-            <p className="total-money-hero__label metadata mt-0.5">Dompet + tabungan</p>
-          </div>
+          <h2
+            id="total-money-title"
+            className="total-money-hero__eyebrow text-[11px] font-bold uppercase tracking-[0.08em]"
+          >
+            Total uang Anda
+          </h2>
           <button
             type="button"
             aria-label={eyeLabel}
             aria-pressed={hideBalances}
             onClick={() => updateSettings({ hideBalances: !hideBalances })}
-            className="motion-press inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-line bg-surface/60 text-muted transition-[transform,color,background-color,border-color] duration-instant ease-standard hover:border-primary/45 hover:text-primary active:bg-elevated"
+            className="motion-press -mr-1.5 -mt-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted transition-[transform,color,background-color] duration-instant ease-standard hover:bg-surface/60 hover:text-primary-strong active:bg-surface/80"
           >
             <EyeIcon className={ICON_SIZE.md} aria-hidden strokeWidth={ICON_STROKE.ui} />
           </button>
         </div>
+
         <p
-          className="financial-display total-money-hero__amount mt-1.5 break-words text-[2rem]"
+          className="financial-display total-money-hero__amount mt-0.5 break-words"
           aria-label={hideBalances ? "Jumlah total tersembunyi" : undefined}
         >
           {hideBalances ? maskMoney() : formatIDR(total)}
         </p>
-      </div>
-      <div className="total-money-hero__breakdown grid grid-cols-2 border-t">
-        <div className="px-4 py-2.5">
-          <p className="total-money-hero__label text-[11px] font-semibold">Dompet</p>
-          <p className="total-money-hero__value mt-0.5 text-[13.5px] font-bold tabular">
+
+        {/* Where the total comes from. Kept as separate nodes so each figure is
+            its own text node (readable, and maskable one by one). */}
+        <p className="total-money-hero__label mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px]">
+          <span className="font-semibold">Dompet</span>
+          <span className="total-money-hero__value tabular font-bold">
             {hideBalances ? maskMoney() : formatIDR(walletTotal)}
-          </p>
-        </div>
-        <div className="total-money-hero__split border-l px-4 py-2.5">
-          <p className="total-money-hero__label text-[11px] font-semibold">Tabungan</p>
-          <p className="total-money-hero__value mt-0.5 text-[13.5px] font-bold tabular">
+          </span>
+          <span aria-hidden>·</span>
+          <span className="font-semibold">Tabungan</span>
+          <span className="total-money-hero__value tabular font-bold">
             {hideBalances ? maskMoney() : formatIDR(savingsTotal)}
-          </p>
-        </div>
+          </span>
+        </p>
       </div>
+
+      {children ? <div className="total-money-hero__month border-t px-4 pb-3 pt-2.5">{children}</div> : null}
     </section>
   );
 }
 
 /**
- * This month as ONE compact data strip: income, expense and the difference
- * between them (never three separate cards, and never a colourful pair of tiles
- * that reads as two more surfaces).
+ * This month as ONE compact data strip, rendered inside the hero (as
+ * `TotalMoneyCard` children) so the month never becomes a second, unrelated card.
+ *
+ * The strip is deliberately reduced to what the Dashboard has to answer: label +
+ * figure for income, expense and the difference. Per-type transaction counts were
+ * dropped from the hero because they competed with the figures at phone density;
+ * they remain on Reports and Budgets. The exclusion caveat is one short line of
+ * secondary microcopy — no tooltip, no dialog.
  *
  * The figures come from `calculateMonthlySummary` untouched, so transfers,
- * savings movements and opening balances stay excluded. The net carries an
- * explicit sign and a word, so its meaning never depends on colour alone.
+ * savings movements and opening balances stay excluded. The difference carries an
+ * explicit sign *and* a word ("surplus"/"defisit"/"seimbang"), so its meaning
+ * never depends on colour alone.
  */
-export function CashFlowCard({ summary, monthKey }: { summary: MonthlySummary; monthKey?: string }) {
+export function MonthlySummaryStrip({ summary, monthKey }: { summary: MonthlySummary; monthKey?: string }) {
   const hideBalances = useHideBalances();
   const net = summary.netCashFlow;
   const netTone = net > 0 ? "text-income" : net < 0 ? "text-expense" : "text-ink";
@@ -134,39 +154,43 @@ export function CashFlowCard({ summary, monthKey }: { summary: MonthlySummary; m
   const money = (amount: number) => (hideBalances ? maskMoney() : formatIDR(amount));
 
   return (
-    <section aria-labelledby="month-summary-title" className="flex flex-col gap-2">
-      <SectionTitle id="month-summary-title">
-        Bulan ini
-        {monthKey ? <span className="font-normal text-subtle"> · {formatMonthLabel(monthKey)}</span> : null}
-      </SectionTitle>
+    <>
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="total-money-hero__eyebrow text-[11px] font-bold uppercase tracking-[0.08em]">Bulan ini</h3>
+        {monthKey ? (
+          <p className="total-money-hero__label text-[11.5px] font-semibold">{formatMonthLabel(monthKey)}</p>
+        ) : null}
+      </div>
 
-      <Card padded={false} className="overflow-hidden">
-        <dl className="grid grid-cols-3 divide-x divide-line">
-          <div className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2.5">
-            <dt className="metadata font-semibold">Pemasukan</dt>
-            <dd className="break-words text-[14px] font-extrabold tabular text-income">{money(summary.income)}</dd>
-            <dd className="metadata">{summary.incomeCount} transaksi</dd>
-          </div>
-          <div className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2.5">
-            <dt className="metadata font-semibold">Pengeluaran</dt>
-            <dd className="break-words text-[14px] font-extrabold tabular text-expense">{money(summary.expense)}</dd>
-            <dd className="metadata">{summary.expenseCount} transaksi</dd>
-          </div>
-          <div className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2.5">
-            <dt className="metadata font-semibold">Selisih</dt>
-            <dd className={cn("break-words text-[14px] font-extrabold tabular", netTone)}>
-              {hideBalances ? maskMoney() : signedNet(net)}
-            </dd>
-            <dd className="metadata">{netWord}</dd>
-          </div>
-        </dl>
-      </Card>
+      <dl className="mt-1.5 grid grid-cols-3 gap-x-3">
+        <div className="min-w-0">
+          <dt className="total-money-hero__label metadata">Pemasukan</dt>
+          <dd className="mt-0.5 break-words text-[13px] font-extrabold tabular tracking-[-0.01em] text-income">
+            {money(summary.income)}
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="total-money-hero__label metadata">Pengeluaran</dt>
+          <dd className="mt-0.5 break-words text-[13px] font-extrabold tabular tracking-[-0.01em] text-expense">
+            {money(summary.expense)}
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="total-money-hero__label metadata">Selisih</dt>
+          <dd className={cn("mt-0.5 break-words text-[13px] font-extrabold tabular tracking-[-0.01em]", netTone)}>
+            {hideBalances ? maskMoney() : signedNet(net)}
+          </dd>
+        </div>
+      </dl>
 
-      <p className="flex items-start gap-1.5 px-0.5 text-[11.5px] leading-relaxed text-muted">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-        Hanya pemasukan dan pengeluaran nyata; transfer, tabungan, dan saldo awal dikecualikan.
+      {/* Two short secondary lines instead of one long sentence: the first states
+          what the figures exclude, the second writes the net meaning out — so the
+          sign and the tone never carry it alone. Both stay on one line at 375px. */}
+      <p className="total-money-hero__label mt-1.5 text-[11px] leading-snug">
+        Transfer, tabungan &amp; saldo awal tidak dihitung.
       </p>
-    </section>
+      <p className="total-money-hero__label mt-0.5 text-[11px] leading-snug">Selisih bulan ini: {netWord}.</p>
+    </>
   );
 }
 

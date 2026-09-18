@@ -160,11 +160,14 @@ describe("Dashboard Phase 2B", () => {
     render(<DashboardPage />);
 
     expect(screen.getByText("+Rp1.750.000")).toBeInTheDocument();
-    expect(screen.getByText("surplus")).toBeInTheDocument();
     expect(screen.getByText("Rp2.500.000")).toBeInTheDocument();
     expect(screen.getAllByText("Rp750.000").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("1 transaksi")).toHaveLength(2);
-    expect(screen.getByText(/transfer, tabungan, dan saldo awal dikecualikan/i)).toBeInTheDocument();
+    // Net meaning is written out, so it never depends on colour or the sign alone.
+    expect(screen.getByText(/Selisih bulan ini: surplus/i)).toBeInTheDocument();
+    // The compact hero keeps the caveat as one short line…
+    expect(screen.getByText(/Transfer, tabungan & saldo awal tidak dihitung/i)).toBeInTheDocument();
+    // …and drops per-type transaction counts from the primary summary (Reports/Budgets keep them).
+    expect(screen.queryByText(/\d+ transaksi/)).not.toBeInTheDocument();
   });
 
   it("shows savings progress from existing derived data", () => {
@@ -293,7 +296,9 @@ describe("Dashboard Phase 2B", () => {
 
     const bridge = screen.getByRole("region", { name: "Pola pengeluaran" });
     expect(within(bridge).getByText(/Belum ada pengeluaran bulan ini/i)).toBeInTheDocument();
-    expect(within(bridge).getByRole("link", { name: /Buka laporan/i })).toHaveAttribute("href", "/reports");
+    // One compact row, and the whole row is the link to /reports.
+    expect(within(bridge).getAllByRole("link")).toHaveLength(1);
+    expect(within(bridge).getByRole("link", { name: /Lihat pola keuanganmu/i })).toHaveAttribute("href", "/reports");
   });
 
   it("summarises several wallets with a route to the money hub", () => {
@@ -317,6 +322,20 @@ describe("Dashboard Phase 2B", () => {
     expect(within(hub).getByRole("link", { name: /2 dompet lain/i })).toHaveAttribute("href", "/wallets");
   });
 
+  it("renders an empty money group as one compact interactive row", () => {
+    setDashboardData(emptyData({ wallets: [makeWallet("cash", { name: "Cash", type: "cash" })] }));
+    render(<DashboardPage />);
+
+    const hub = screen.getByRole("region", { name: "Dompet & Tabungan" });
+    // The empty state is the row itself, so the whole row is the create-route link.
+    const targetRow = within(hub).getByRole("link", { name: /Buat target/i });
+    expect(targetRow).toHaveAttribute("href", "/savings/new");
+    expect(within(targetRow).getByText("Belum ada target tabungan")).toBeInTheDocument();
+    // No loud uppercase group headings and no redundant "+ Target" control remain.
+    expect(within(hub).queryByText("Tabungan")).not.toBeInTheDocument();
+    expect(within(hub).queryByRole("link", { name: /^\+ Target$/ })).not.toBeInTheDocument();
+  });
+
   it("shows the top expense category in the reports bridge", () => {
     setDashboardData(realisticData());
     render(<DashboardPage />);
@@ -324,6 +343,73 @@ describe("Dashboard Phase 2B", () => {
     const bridge = screen.getByRole("region", { name: "Pola pengeluaran" });
     expect(within(bridge).getByText(/Pengeluaran terbesar bulan ini/i)).toBeInTheDocument();
     expect(within(bridge).getByText("Makanan")).toBeInTheDocument();
-    expect(within(bridge).getByRole("link", { name: /Buka laporan/i })).toHaveAttribute("href", "/reports");
+    expect(within(bridge).getAllByRole("link")).toHaveLength(1);
+    expect(within(bridge).getByRole("link", { name: /Lihat pola keuanganmu/i })).toHaveAttribute("href", "/reports");
+  });
+
+  it("reads total money and this month as one hero overview", () => {
+    setDashboardData(realisticData());
+    render(<DashboardPage />);
+
+    const hero = screen.getByText("Total uang Anda").closest("section");
+    expect(hero).not.toBeNull();
+    expect(hero).toHaveClass("total-money-hero");
+    // The monthly strip lives inside the same surface — one overview, not two cards.
+    expect(within(hero!).getByRole("heading", { name: "Bulan ini" })).toBeInTheDocument();
+    expect(within(hero!).getByText("September 2026")).toBeInTheDocument();
+    expect(within(hero!).getByText("+Rp1.750.000")).toBeInTheDocument();
+    // The derivation of the total stays visible next to the headline figure.
+    expect(within(hero!).getByText("Rp11.450.000")).toBeInTheDocument();
+    expect(within(hero!).getByText("Rp800.000")).toBeInTheDocument();
+  });
+
+  it("never signs a transfer or a savings movement as income or expense in the feed", () => {
+    setDashboardData(realisticData());
+    render(<DashboardPage />);
+
+    const recent = screen.getByRole("region", { name: "Transaksi terakhir" });
+    // A real expense keeps its expense sign…
+    expect(within(recent).getByText("-Rp750.000")).toBeInTheDocument();
+    // …while an internal movement is shown unsigned, with its own type badge.
+    expect(within(recent).getByText("Rp500.000")).toBeInTheDocument();
+    expect(within(recent).queryByText("+Rp500.000")).not.toBeInTheDocument();
+    expect(within(recent).queryByText("-Rp500.000")).not.toBeInTheDocument();
+    expect(within(recent).getByText("Rp1.000.000")).toBeInTheDocument();
+    expect(within(recent).queryByText("+Rp1.000.000")).not.toBeInTheDocument();
+  });
+
+  it("never signs an opening balance as income in the feed", () => {
+    setDashboardData(
+      emptyData({
+        wallets: [makeWallet("bca", { name: "BCA" })],
+        transactions: [
+          makeTx({
+            id: "open-bca",
+            type: "opening_balance",
+            amount: 3_000_000,
+            destinationWalletId: "bca",
+            date: on(2026, 9, 1),
+            createdAt: at(2026, 9, 1, 8),
+          }),
+        ],
+      }),
+    );
+    render(<DashboardPage />);
+
+    const recent = screen.getByRole("region", { name: "Transaksi terakhir" });
+    expect(within(recent).getByText("Rp3.000.000")).toBeInTheDocument();
+    expect(within(recent).queryByText("+Rp3.000.000")).not.toBeInTheDocument();
+    expect(within(recent).getAllByText("Saldo Awal").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("keeps the recent feed masked while balances are hidden", () => {
+    setDashboardData(realisticData());
+    useSmartSpendStore.getState().updateSettings({ hideBalances: true });
+    render(<DashboardPage />);
+
+    const recent = screen.getByRole("region", { name: "Transaksi terakhir" });
+    expect(within(recent).queryByText("Rp500.000")).not.toBeInTheDocument();
+    expect(within(recent).queryByText("-Rp750.000")).not.toBeInTheDocument();
+    expect(within(recent).getAllByText(maskMoney()).length).toBeGreaterThanOrEqual(4);
   });
 });

@@ -306,11 +306,27 @@ body {
 .total-money-hero__amount,
 .total-money-hero__value { color: var(--foreground); }
 .total-money-hero__label { color: var(--muted); }
-.total-money-hero__breakdown {
-  background-color: color-mix(in srgb, var(--elevated) 62%, var(--surface));
+
+/* Dashboard hero amount — the single dominant figure on Beranda, deliberately
+ * larger than the shared `.financial-display` but tuned for a phone: premium
+ * financial hero, not billboard type. The viewport-relative clamp keeps
+ * `Rp9.999.999.999` (15 glyphs) inside the hero down to 375px, and the figures
+ * stay tabular so nothing jitters as the value changes. Type only: no new
+ * colour and no decoration, so both themes inherit it through the tokens. */
+.total-money-hero__amount {
+  font-size: clamp(2.05rem, 8.6vw, 2.3rem);
+  font-weight: 780;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The current-month strip lives *inside* the hero, separated by one internal
+ * hairline, so "total money" and "bulan ini" read as a single financial
+ * overview rather than two unrelated cards. */
+.total-money-hero__month {
   border-color: color-mix(in srgb, var(--primary) 18%, var(--border));
 }
-.total-money-hero__split { border-color: color-mix(in srgb, var(--primary) 18%, var(--border)); }
 
 /* Dark-mode hero: a flat brand-tinted panel on the dark page.
  * All sub-element colours (eyebrow, labels, amounts, breakdown band) now
