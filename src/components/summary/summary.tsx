@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ArrowDown, ArrowUp, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Eye, EyeOff, Info } from "lucide-react";
-import { Card } from "@/components/ui/layout";
+import { CalendarDays, ChevronLeft, ChevronRight, Eye, EyeOff, Info } from "lucide-react";
+import { Card, ICON_SIZE, ICON_STROKE, SectionTitle } from "@/components/ui/layout";
 import { cn } from "@/lib/cn";
-import { formatIDR } from "@/domain/money";
+import { formatIDR, formatSignedIDR } from "@/domain/money";
 import { type CategoryMeta } from "@/domain/categories";
 import { useSmartSpendStore } from "@/app/store";
 import { maskMoney, useHideBalances } from "@/components/settings/money-mask";
@@ -70,21 +70,30 @@ export function TotalMoneyCard({
   const eyeLabel = hideBalances ? "Tampilkan nominal" : "Sembunyikan nominal";
 
   return (
-    <section className="total-money-hero overflow-hidden rounded-xl border">
+    <section aria-labelledby="total-money-title" className="total-money-hero overflow-hidden rounded-surface border">
       <div className="px-4 pb-3.5 pt-4">
-        <div className="flex items-start justify-between gap-2">
-          <p className="total-money-hero__eyebrow text-[11px] font-bold uppercase tracking-[0.08em]">Total uang Anda</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2
+              id="total-money-title"
+              className="total-money-hero__eyebrow text-[11px] font-bold uppercase tracking-[0.08em]"
+            >
+              Total uang Anda
+            </h2>
+            <p className="total-money-hero__label metadata mt-0.5">Dompet + tabungan</p>
+          </div>
           <button
             type="button"
             aria-label={eyeLabel}
+            aria-pressed={hideBalances}
             onClick={() => updateSettings({ hideBalances: !hideBalances })}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line bg-surface/60 text-muted transition hover:border-brand/40 hover:text-brand"
+            className="motion-press inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-line bg-surface/60 text-muted transition-[transform,color,background-color,border-color] duration-instant ease-standard hover:border-primary/45 hover:text-primary active:bg-elevated"
           >
-            <EyeIcon className="h-[18px] w-[18px]" aria-hidden />
+            <EyeIcon className={ICON_SIZE.md} aria-hidden strokeWidth={ICON_STROKE.ui} />
           </button>
         </div>
         <p
-          className="financial-display total-money-hero__amount mt-1 text-[2rem]"
+          className="financial-display total-money-hero__amount mt-1.5 break-words text-[2rem]"
           aria-label={hideBalances ? "Jumlah total tersembunyi" : undefined}
         >
           {hideBalances ? maskMoney() : formatIDR(total)}
@@ -108,53 +117,64 @@ export function TotalMoneyCard({
   );
 }
 
-export function CashFlowCard({ summary }: { summary: MonthlySummary }) {
+/**
+ * This month as ONE compact data strip: income, expense and the difference
+ * between them (never three separate cards, and never a colourful pair of tiles
+ * that reads as two more surfaces).
+ *
+ * The figures come from `calculateMonthlySummary` untouched, so transfers,
+ * savings movements and opening balances stay excluded. The net carries an
+ * explicit sign and a word, so its meaning never depends on colour alone.
+ */
+export function CashFlowCard({ summary, monthKey }: { summary: MonthlySummary; monthKey?: string }) {
   const hideBalances = useHideBalances();
-  const netTone = summary.netCashFlow >= 0 ? "text-income" : "text-expense";
+  const net = summary.netCashFlow;
+  const netTone = net > 0 ? "text-income" : net < 0 ? "text-expense" : "text-ink";
+  const netWord = net > 0 ? "surplus" : net < 0 ? "defisit" : "seimbang";
+  const money = (amount: number) => (hideBalances ? maskMoney() : formatIDR(amount));
 
   return (
-    <Card as="section" className="flex flex-col gap-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-[13px] font-bold uppercase tracking-wide text-muted">Bulan ini</h2>
-        <p className={cn("text-[14px] font-extrabold tabular", netTone)}>
-          {hideBalances ? maskMoney() : `Net ${formatIDR(summary.netCashFlow)}`}
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <figure className="rounded-lg bg-income-soft px-3 py-2.5">
-          <figcaption className="flex items-center gap-1.5 text-[11.5px] font-semibold text-income">
-            <ArrowDown className="h-3.5 w-3.5" aria-hidden />
-            Pemasukan
-          </figcaption>
-          <p className="mt-0.5 text-[17px] font-extrabold tabular text-income">
-            {hideBalances ? maskMoney() : formatIDR(summary.income)}
-          </p>
-          <p className="text-[11px] text-muted">{summary.incomeCount} transaksi</p>
-        </figure>
-        <figure className="rounded-lg bg-expense-soft px-3 py-2.5">
-          <figcaption className="flex items-center gap-1.5 text-[11.5px] font-semibold text-expense">
-            <ArrowUp className="h-3.5 w-3.5" aria-hidden />
-            Pengeluaran
-          </figcaption>
-          <p className="mt-0.5 text-[17px] font-extrabold tabular text-expense">
-            {hideBalances ? maskMoney() : formatIDR(summary.expense)}
-          </p>
-          <p className="text-[11px] text-muted">{summary.expenseCount} transaksi</p>
-        </figure>
-      </div>
-      <p className="flex items-start gap-1.5 text-[11.5px] leading-relaxed text-muted">
+    <section aria-labelledby="month-summary-title" className="flex flex-col gap-2">
+      <SectionTitle id="month-summary-title">
+        Bulan ini
+        {monthKey ? <span className="font-normal text-subtle"> · {formatMonthLabel(monthKey)}</span> : null}
+      </SectionTitle>
+
+      <Card padded={false} className="overflow-hidden">
+        <dl className="grid grid-cols-3 divide-x divide-line">
+          <div className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2.5">
+            <dt className="metadata font-semibold">Pemasukan</dt>
+            <dd className="break-words text-[14px] font-extrabold tabular text-income">{money(summary.income)}</dd>
+            <dd className="metadata">{summary.incomeCount} transaksi</dd>
+          </div>
+          <div className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2.5">
+            <dt className="metadata font-semibold">Pengeluaran</dt>
+            <dd className="break-words text-[14px] font-extrabold tabular text-expense">{money(summary.expense)}</dd>
+            <dd className="metadata">{summary.expenseCount} transaksi</dd>
+          </div>
+          <div className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2.5">
+            <dt className="metadata font-semibold">Selisih</dt>
+            <dd className={cn("break-words text-[14px] font-extrabold tabular", netTone)}>
+              {hideBalances ? maskMoney() : signedNet(net)}
+            </dd>
+            <dd className="metadata">{netWord}</dd>
+          </div>
+        </dl>
+      </Card>
+
+      <p className="flex items-start gap-1.5 px-0.5 text-[11.5px] leading-relaxed text-muted">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
         Hanya pemasukan dan pengeluaran nyata; transfer, tabungan, dan saldo awal dikecualikan.
       </p>
-      <Link
-        href="/reports"
-        className="flex items-center gap-0.5 self-start text-[12px] font-semibold text-brand hover:underline"
-      >
-        Lihat laporan
-        <ArrowRight className="h-3 w-3" aria-hidden />
-      </Link>
-    </Card>
+    </section>
   );
+}
+
+/** Net cash flow keeps an explicit sign so it never relies on colour to be read. */
+function signedNet(value: number): string {
+  if (value > 0) return formatSignedIDR(value, "income");
+  if (value < 0) return formatSignedIDR(value, "expense");
+  return formatSignedIDR(0, "neutral");
 }
 
 /**

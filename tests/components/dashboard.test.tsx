@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import DashboardPage from "@/app/page";
 import { TotalMoneyCard } from "@/components/summary/summary";
 import { useSmartSpendStore, configureRepository } from "@/app/store";
 import { createLocalStorageRepository } from "@/repository/repository";
 import { MemoryStorageAdapter } from "@/repository/storage";
+import { maskMoney } from "@/components/settings/money-mask";
 import { emptyData, makeTarget, makeTx, makeWallet, on, at } from "../fixtures";
 import type { PersistedData } from "@/repository/storage-schema";
 
@@ -131,13 +132,16 @@ describe("Dashboard Phase 2B", () => {
     expect(screen.getAllByText("Rp11.450.000").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Rp800.000").length).toBeGreaterThanOrEqual(1);
 
-    const walletSection = screen.getByRole("region", { name: "Di mana uang Anda" });
-    expect(within(walletSection).getByText("BCA")).toBeInTheDocument();
-    expect(within(walletSection).getByText("Rp10.250.000")).toBeInTheDocument();
-    expect(within(walletSection).getByText("Cash")).toBeInTheDocument();
-    expect(within(walletSection).getByText("Rp1.200.000")).toBeInTheDocument();
-    expect(within(walletSection).getByText("Jago")).toBeInTheDocument();
-    expect(within(walletSection).getByRole("link", { name: /Semua dompet/i })).toHaveAttribute("href", "/wallets");
+    const hub = screen.getByRole("region", { name: "Dompet & Tabungan" });
+    expect(within(hub).getByText("BCA")).toBeInTheDocument();
+    expect(within(hub).getAllByText("Bank").length).toBeGreaterThanOrEqual(1);
+    expect(within(hub).getByText("Rp10.250.000")).toBeInTheDocument();
+    expect(within(hub).getByText("Cash")).toBeInTheDocument();
+    expect(within(hub).getByText("Tunai")).toBeInTheDocument();
+    expect(within(hub).getByText("Rp1.200.000")).toBeInTheDocument();
+    expect(within(hub).getByText("Jago")).toBeInTheDocument();
+    expect(within(hub).getByRole("link", { name: /Kelola/i })).toHaveAttribute("href", "/wallets");
+    expect(within(hub).getByRole("link", { name: /BCA/ })).toHaveAttribute("href", "/wallets/bca");
   });
 
   it("uses semantic hero styling instead of white text on the shared surface card", () => {
@@ -155,7 +159,8 @@ describe("Dashboard Phase 2B", () => {
     setDashboardData(realisticData());
     render(<DashboardPage />);
 
-    expect(screen.getByText("Net Rp1.750.000")).toBeInTheDocument();
+    expect(screen.getByText("+Rp1.750.000")).toBeInTheDocument();
+    expect(screen.getByText("surplus")).toBeInTheDocument();
     expect(screen.getByText("Rp2.500.000")).toBeInTheDocument();
     expect(screen.getAllByText("Rp750.000").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("1 transaksi")).toHaveLength(2);
@@ -166,22 +171,159 @@ describe("Dashboard Phase 2B", () => {
     setDashboardData(realisticData());
     render(<DashboardPage />);
 
-    const savingsSection = screen.getByRole("region", { name: "Tabungan" });
-    expect(within(savingsSection).getByText("Liburan")).toBeInTheDocument();
-    expect(within(savingsSection).getByText("Rp800.000")).toBeInTheDocument();
-    expect(within(savingsSection).getByText("16%")).toBeInTheDocument();
-    expect(within(savingsSection).getByText("Target Rp5.000.000")).toBeInTheDocument();
+    const hub = screen.getByRole("region", { name: "Dompet & Tabungan" });
+    expect(within(hub).getByText("Liburan")).toBeInTheDocument();
+    expect(within(hub).getByText("Rp800.000")).toBeInTheDocument();
+    expect(within(hub).getByText("16%")).toBeInTheDocument();
+    expect(within(hub).getByText("Target Rp5.000.000")).toBeInTheDocument();
+    expect(within(hub).getByRole("link", { name: /Liburan/ })).toHaveAttribute("href", "/savings/liburan");
   });
 
   it("keeps the transaction create route reachable and shows recent transactions earlier", () => {
     setDashboardData(realisticData());
     render(<DashboardPage />);
 
-    expect(screen.getByRole("link", { name: /^Catat$/i })).toHaveAttribute("href", "/transactions/new");
+    expect(screen.getByRole("link", { name: /Tambah Transaksi/i })).toHaveAttribute("href", "/transactions/new");
     const recentSection = screen.getByRole("region", { name: "Transaksi terakhir" });
     expect(within(recentSection).getAllByText("Setoran Tabungan").length).toBeGreaterThanOrEqual(1);
     expect(within(recentSection).getAllByText("Transfer").length).toBeGreaterThanOrEqual(1);
     expect(within(recentSection).getByText("Belanja pasar")).toBeInTheDocument();
     expect(within(recentSection).getByRole("link", { name: /Semua/i })).toHaveAttribute("href", "/transactions");
+    // Only the newest four records belong in the feed preview.
+    expect(within(recentSection).queryByText("Gaji")).not.toBeInTheDocument();
+  });
+
+  it("exposes the four dashboard destinations without inventing new flows", () => {
+    setDashboardData(realisticData());
+    render(<DashboardPage />);
+
+    const quickActions = screen.getByRole("region", { name: "Aksi cepat" });
+    const links = within(quickActions).getAllByRole("link");
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/transactions/new",
+      "/transactions/new?kind=transfer",
+      "/wallets",
+      "/reports",
+    ]);
+  });
+
+  it("orders the recent feed by the canonical ledger ordering, not by createdAt alone", () => {
+    setDashboardData(
+      emptyData({
+        wallets: [makeWallet("cash", { name: "Cash", type: "cash" })],
+        transactions: [
+          makeTx({
+            id: "older",
+            type: "income",
+            amount: 100_000,
+            destinationWalletId: "cash",
+            note: "Catatan lama",
+            date: on(2026, 9, 10),
+            createdAt: at(2026, 9, 10, 8),
+          }),
+          makeTx({
+            id: "newer",
+            type: "income",
+            amount: 200_000,
+            destinationWalletId: "cash",
+            note: "Catatan baru",
+            date: on(2026, 9, 10),
+            createdAt: at(2026, 9, 10, 9),
+          }),
+        ],
+      }),
+    );
+    render(<DashboardPage />);
+
+    const recentSection = screen.getByRole("region", { name: "Transaksi terakhir" });
+    const labels = within(recentSection)
+      .getAllByRole("link")
+      .map((link) => link.textContent ?? "");
+    const newer = labels.findIndex((text) => text.includes("Catatan baru"));
+    const older = labels.findIndex((text) => text.includes("Catatan lama"));
+
+    expect(newer).toBeGreaterThanOrEqual(0);
+    expect(older).toBeGreaterThanOrEqual(0);
+    expect(newer).toBeLessThan(older);
+  });
+
+  it("masks every balance surface when hideBalances is on", () => {
+    setDashboardData(realisticData());
+    useSmartSpendStore.getState().updateSettings({ hideBalances: true });
+    render(<DashboardPage />);
+
+    expect(screen.getByRole("button", { name: /Tampilkan nominal/i })).toBeInTheDocument();
+    expect(screen.queryByText("Rp12.250.000")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rp10.250.000")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rp2.500.000")).not.toBeInTheDocument();
+    expect(screen.getAllByText(maskMoney()).length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("renders the largest supported IDR value without breaking the hero", () => {
+    setDashboardData(
+      emptyData({
+        wallets: [makeWallet("bca", { name: "BCA" })],
+        transactions: [
+          makeTx({
+            id: "open-max",
+            type: "opening_balance",
+            amount: 9_999_999_999,
+            destinationWalletId: "bca",
+            date: on(2026, 9, 1),
+            createdAt: at(2026, 9, 1, 8),
+          }),
+        ],
+      }),
+    );
+    render(<DashboardPage />);
+
+    expect(screen.getAllByText("Rp9.999.999.999").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("keeps the feed and the reports bridge useful before the first transaction", () => {
+    setDashboardData(emptyData({ wallets: [makeWallet("cash", { name: "Cash", type: "cash" })] }));
+    render(<DashboardPage />);
+
+    const recentSection = screen.getByRole("region", { name: "Transaksi terakhir" });
+    expect(within(recentSection).getByText("Belum ada transaksi yang dicatat.")).toBeInTheDocument();
+    expect(within(recentSection).getByRole("link", { name: /Catat transaksi/i })).toHaveAttribute(
+      "href",
+      "/transactions/new",
+    );
+
+    const bridge = screen.getByRole("region", { name: "Pola pengeluaran" });
+    expect(within(bridge).getByText(/Belum ada pengeluaran bulan ini/i)).toBeInTheDocument();
+    expect(within(bridge).getByRole("link", { name: /Buka laporan/i })).toHaveAttribute("href", "/reports");
+  });
+
+  it("summarises several wallets with a route to the money hub", () => {
+    setDashboardData(
+      emptyData({
+        wallets: [
+          makeWallet("w1", { name: "Dompet 1" }),
+          makeWallet("w2", { name: "Dompet 2" }),
+          makeWallet("w3", { name: "Dompet 3" }),
+          makeWallet("w4", { name: "Dompet 4" }),
+          makeWallet("w5", { name: "Dompet 5" }),
+        ],
+      }),
+    );
+    render(<DashboardPage />);
+
+    const hub = screen.getByRole("region", { name: "Dompet & Tabungan" });
+    expect(within(hub).getByText("Dompet 1")).toBeInTheDocument();
+    expect(within(hub).getByText("Dompet 3")).toBeInTheDocument();
+    expect(within(hub).queryByText("Dompet 4")).not.toBeInTheDocument();
+    expect(within(hub).getByRole("link", { name: /2 dompet lain/i })).toHaveAttribute("href", "/wallets");
+  });
+
+  it("shows the top expense category in the reports bridge", () => {
+    setDashboardData(realisticData());
+    render(<DashboardPage />);
+
+    const bridge = screen.getByRole("region", { name: "Pola pengeluaran" });
+    expect(within(bridge).getByText(/Pengeluaran terbesar bulan ini/i)).toBeInTheDocument();
+    expect(within(bridge).getByText("Makanan")).toBeInTheDocument();
+    expect(within(bridge).getByRole("link", { name: /Buka laporan/i })).toHaveAttribute("href", "/reports");
   });
 });
