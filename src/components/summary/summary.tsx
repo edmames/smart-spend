@@ -183,10 +183,13 @@ export function MonthlySummaryStrip({ summary, monthKey }: { summary: MonthlySum
         </div>
       </dl>
 
-      {/* Net meaning is written out, so the sign and the tone never carry it alone. */}
+      {/* Two short secondary lines instead of one long sentence: the first states
+          what the figures exclude, the second writes the net meaning out — so the
+          sign and the tone never carry it alone. Both stay on one line at 375px. */}
       <p className="total-money-hero__label mt-1.5 text-[11px] leading-snug">
-        Hanya pemasukan &amp; pengeluaran nyata. Transfer, tabungan &amp; saldo awal tidak dihitung · Selisih: {netWord}.
+        Transfer, tabungan &amp; saldo awal tidak dihitung.
       </p>
+      <p className="total-money-hero__label mt-0.5 text-[11px] leading-snug">Selisih bulan ini: {netWord}.</p>
     </>
   );
 }

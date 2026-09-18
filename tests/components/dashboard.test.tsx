@@ -163,7 +163,7 @@ describe("Dashboard Phase 2B", () => {
     expect(screen.getByText("Rp2.500.000")).toBeInTheDocument();
     expect(screen.getAllByText("Rp750.000").length).toBeGreaterThanOrEqual(1);
     // Net meaning is written out, so it never depends on colour or the sign alone.
-    expect(screen.getByText(/Selisih: surplus/i)).toBeInTheDocument();
+    expect(screen.getByText(/Selisih bulan ini: surplus/i)).toBeInTheDocument();
     // The compact hero keeps the caveat as one short line…
     expect(screen.getByText(/Transfer, tabungan & saldo awal tidak dihitung/i)).toBeInTheDocument();
     // …and drops per-type transaction counts from the primary summary (Reports/Budgets keep them).
