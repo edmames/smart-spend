@@ -14,8 +14,10 @@ import { cn } from "@/lib/cn";
  * House rules encoded here:
  *  - every control is a >=44px touch target (min-h-11) and keeps the global
  *    focus-visible ring, so no primitive needs `outline-none`;
- *  - states are static CSS (`hover` / `active` / `disabled` / `aria-pressed`),
- *    never animated — motion is owned by a later phase;
+ *  - state feedback uses the Motion Constitution v1 tokens only: press is a
+ *    transform-only scale at `instant` (via `.motion-press`), chrome settles at
+ *    `quick`, selection changes colour at `standard`, and nothing animates
+ *    layout, numbers or charts;
  *  - off-scale spacing that is tuned for touch targets or density (control
  *    padding, card padding) stays explicit rather than being snapped.
  */
@@ -46,7 +48,7 @@ const SIZES: Record<Size, string> = {
 };
 
 const BASE =
-  "inline-flex select-none items-center justify-center font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+  "motion-press inline-flex select-none items-center justify-center font-semibold transition-[transform,color,background-color,border-color] duration-instant ease-standard disabled:cursor-not-allowed disabled:opacity-50";
 
 export function buttonClass(variant: Variant = "primary", size: Size = "md", extra?: string): string {
   return cn(BASE, VARIANTS[variant], SIZES[size], extra);
@@ -100,7 +102,7 @@ export function IconButton({
       type="button"
       aria-label={label}
       className={cn(
-        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-line bg-surface text-muted transition-colors hover:border-primary/45 hover:text-primary active:bg-elevated disabled:cursor-not-allowed disabled:opacity-50",
+        "motion-press inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-line bg-surface text-muted transition-[transform,color,background-color,border-color] duration-instant ease-standard hover:border-primary/45 hover:text-primary active:bg-elevated disabled:cursor-not-allowed disabled:opacity-50",
         FOCUS,
         className,
       )}
@@ -141,7 +143,8 @@ export function Card({
         variant === "surface" && "border border-line bg-surface",
         variant === "raised" && "border border-line bg-surface shadow-raised",
         variant === "plain" && "bg-transparent",
-        interactive && "transition-colors hover:border-line-strong hover:bg-elevated/50 active:bg-elevated",
+        interactive &&
+          "motion-press transition-[transform,background-color,border-color] duration-instant ease-standard hover:border-line-strong hover:bg-elevated/50 active:bg-elevated",
         padded && "p-3.5",
         className,
       )}
@@ -219,7 +222,7 @@ export function PageHeader({
               href={backHref}
               aria-label="Kembali"
               className={cn(
-                "-ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted transition-colors hover:bg-elevated hover:text-ink active:bg-elevated/70",
+                "motion-press -ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted transition-[transform,color,background-color] duration-instant ease-standard hover:bg-elevated hover:text-ink active:bg-elevated/70",
                 FOCUS,
               )}
             >
@@ -296,7 +299,10 @@ export function ProgressBar({
       aria-valuemax={100}
       aria-label={label}
     >
-      <div className={cn("h-full rounded-full transition-[width]", fill)} style={{ width: `${width}%` }} />
+      <div
+        className={cn("h-full rounded-full transition-[width] duration-emphasis ease-standard", fill)}
+        style={{ width: `${width}%` }}
+      />
     </div>
   );
 }

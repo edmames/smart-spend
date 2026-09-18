@@ -72,6 +72,15 @@
   --shadow-subtle: var(--elevation-subtle);
   --shadow-raised: var(--elevation-raised);
   --shadow-overlay: var(--elevation-overlay);
+  /* Motion — Motion Constitution v1. Values live with the semantic vars in
+   * `:root` so utilities and plain CSS share exactly one timing scale. */
+  --ease-standard: var(--motion-ease-standard);
+  --ease-enter: var(--motion-ease-enter);
+  --ease-exit: var(--motion-ease-exit);
+  --transition-duration-instant: var(--motion-instant);
+  --transition-duration-quick: var(--motion-quick);
+  --transition-duration-standard: var(--motion-standard);
+  --transition-duration-emphasis: var(--motion-emphasis);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -142,6 +151,22 @@
   --elevation-subtle: 0 1px 2px 0 rgb(15 40 45 / 0.05);
   --elevation-raised: 0 2px 8px -2px rgb(15 40 45 / 0.1), 0 1px 2px -1px rgb(15 40 45 / 0.06);
   --elevation-overlay: 0 16px 40px -12px rgb(15 40 45 / 0.28);
+  /* Motion Constitution v1 — the only timings, easings and scales in the app.
+   * Theme-independent on purpose: motion does not change with the palette.
+   *   instant  100ms  press feedback, anything the user is holding
+   *   quick    160ms  persistent chrome (bottom navigation)
+   *   standard 220ms  colour/border change of a selected control
+   *   emphasis 300ms  one-off entrances (dialog) and progress movement
+   * `--motion-scale-subtle` is the single subtle scale, shared by press and
+   * entry so neither can drift into a "spicy" value. */
+  --motion-instant: 100ms;
+  --motion-quick: 160ms;
+  --motion-standard: 220ms;
+  --motion-emphasis: 300ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --motion-scale-subtle: 0.98;
   --nav-height: 56px;
 }
 
@@ -331,6 +356,48 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 input:focus-visible, textarea:focus-visible, select:focus-visible {
   outline: 2px solid var(--primary); outline-offset: 2px;
 }
+/* ============================================================================
+ * Motion Constitution v1 — "motion explains change".
+ *
+ * Motion never competes with financial information, so the vocabulary stays
+ * tiny: a transform-only press, colour/border transitions on selected state,
+ * and one dialog entrance. No layout animation, no bounce, no glow, no stagger.
+ * Every value comes from the motion tokens above, and the reduced-motion block
+ * below neutralises all of it without changing behaviour.
+ * ========================================================================== */
+
+/* Press feedback: transform only, so nothing reflows; instantly reversible and
+ * opt-in per control (informational surfaces never use it). Disabled controls are
+ * excluded explicitly rather than trusting every browser to withhold `:active`. */
+.motion-press:active:not([disabled]) { transform: scale(var(--motion-scale-subtle)); }
+
+/* ConfirmDialog entrance. The resting state stays fully visible, so a browser
+ * without `@starting-style` (iOS < 17.4) shows the dialog unanimated instead of
+ * not showing it at all — focus management, Escape and focus restoration are
+ * untouched either way.
+ *
+ * The exit is deliberately NOT animated: doing so requires a hidden resting
+ * state, which would make the dialog invisible wherever `@starting-style` is
+ * unsupported. The exit easing token is reserved for a future architecture that
+ * can fade out safely (e.g. an exit class driven by the close event). */
+.confirm-dialog[open] {
+  transition:
+    opacity var(--motion-emphasis) var(--motion-ease-enter),
+    transform var(--motion-emphasis) var(--motion-ease-enter);
+}
+.confirm-dialog::backdrop {
+  transition: opacity var(--motion-emphasis) var(--motion-ease-enter);
+}
+@starting-style {
+  .confirm-dialog[open] { opacity: 0; transform: scale(var(--motion-scale-subtle)); }
+  .confirm-dialog[open]::backdrop { opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  /* Motion Constitution v1: non-essential transforms are removed outright,
+   * not merely sped up, so no element shifts under the user's finger.
+   * (Selectors mirror the motion block above so they win on source order.) */
+  .motion-press:active:not([disabled]) { transform: none; }
+  .confirm-dialog[open] { transform: none; }
 }

@@ -34,8 +34,16 @@ function declarations(block: string): Record<string, string> {
   return out;
 }
 
-/** Custom properties that describe layout metrics, not themable colour. */
-const LAYOUT_ONLY = new Set(["--nav-height"]);
+/**
+ * Custom properties that are theme-independent by design: layout metrics and the
+ * Motion Constitution scale (motion does not change with the palette, so the
+ * dark blocks must not redefine it — it stays defined once in `:root`).
+ */
+const THEME_INDEPENDENT = new Set(["--nav-height"]);
+
+function isThemed(name: string): boolean {
+  return !THEME_INDEPENDENT.has(name) && !name.startsWith("--motion-");
+}
 
 const light = declarations(section(":root {\n  color-scheme: light;", "@media (prefers-color-scheme: dark)"));
 const darkMedia = declarations(
@@ -73,10 +81,7 @@ const TEXT_ON_FILL: [string, string][] = [
 
 describe("design tokens — themes", () => {
   it("defines the same semantic tokens in light and both dark blocks", () => {
-    const names = (block: Record<string, string>) =>
-      Object.keys(block)
-        .filter((name) => !LAYOUT_ONLY.has(name))
-        .sort();
+    const names = (block: Record<string, string>) => Object.keys(block).filter(isThemed).sort();
 
     expect(names(darkMedia)).toEqual(names(light));
     expect(names(darkAttr)).toEqual(names(light));
@@ -85,6 +90,12 @@ describe("design tokens — themes", () => {
   it("keeps the two dark blocks identical, value for value", () => {
     const mismatches = Object.keys(darkMedia).filter((name) => darkMedia[name] !== darkAttr[name]);
     expect(mismatches).toEqual([]);
+  });
+
+  it("keeps the motion scale theme-independent and defined once", () => {
+    expect(Object.keys(light).filter((name) => name.startsWith("--motion-")).length).toBeGreaterThan(0);
+    expect(Object.keys(darkAttr).filter((name) => name.startsWith("--motion-"))).toEqual([]);
+    expect(Object.keys(darkMedia).filter((name) => name.startsWith("--motion-"))).toEqual([]);
   });
 
   it("resolves every on-colour against a token that exists", () => {

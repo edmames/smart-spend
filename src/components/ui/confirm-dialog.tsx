@@ -12,7 +12,12 @@ import { cn } from "@/lib/cn";
  * Visual layer: the highest elevation in the app (`shadow-overlay`), the `full`
  * radius level (`radius-overlay`) and the shared `overlay` scrim. The confirm
  * action uses the danger tokens, so the destructive choice never relies on a
- * hardcoded colour. Behaviour and focus management are untouched.
+ * hardcoded colour.
+ *
+ * Motion: the `confirm-dialog` class carries the Motion Constitution v1 entrance
+ * (opacity + a subtle scale at `emphasis`/`ease-enter`, backdrop fade) from
+ * `globals.css`. Behaviour and focus management are untouched, and browsers
+ * without `@starting-style` simply render the dialog unanimated.
  */
 export interface ConfirmDialogProps {
   open: boolean;
@@ -78,7 +83,7 @@ export function ConfirmDialog({
       aria-labelledby="confirm-dialog-title"
       aria-describedby={description ? "confirm-dialog-desc" : undefined}
       className={cn(
-        "m-auto w-[min(92vw,26rem)] rounded-overlay border border-line bg-surface p-0 shadow-overlay backdrop:bg-overlay",
+        "confirm-dialog m-auto w-[min(92vw,26rem)] rounded-overlay border border-line bg-surface p-0 shadow-overlay backdrop:bg-overlay",
         "[&[open]]:block",
       )}
     >

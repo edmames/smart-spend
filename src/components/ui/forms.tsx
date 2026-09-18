@@ -275,7 +275,7 @@ export function Segmented<T extends string>({
               aria-pressed={active}
               onClick={() => onChange(option.value)}
               className={cn(
-                "flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-control border px-2.5 py-2 text-[13px] transition-colors",
+                "flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-control border px-2.5 py-2 text-[13px] transition-[background-color,border-color,color] duration-standard ease-standard",
                 active
                   ? "border-primary bg-primary-soft font-semibold text-primary-strong"
                   : "border-line bg-surface font-medium text-ink hover:border-line-strong hover:bg-elevated/60",
@@ -319,7 +319,7 @@ export function ChipToggle<T extends string>({
               aria-pressed={active}
               onClick={() => onToggle(option.value)}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                "rounded-full border px-3 py-1.5 text-xs transition-[background-color,border-color,color] duration-standard ease-standard",
                 active
                   ? "border-primary bg-primary-soft font-semibold text-primary-strong"
                   : "border-line bg-surface font-medium text-muted hover:border-line-strong hover:text-ink",
