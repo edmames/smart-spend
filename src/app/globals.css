@@ -367,8 +367,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
  * ========================================================================== */
 
 /* Press feedback: transform only, so nothing reflows; instantly reversible and
- * opt-in per control (informational surfaces never use it). */
-.motion-press:active { transform: scale(var(--motion-scale-subtle)); }
+ * opt-in per control (informational surfaces never use it). Disabled controls are
+ * excluded explicitly rather than trusting every browser to withhold `:active`. */
+.motion-press:active:not([disabled]) { transform: scale(var(--motion-scale-subtle)); }
 
 /* ConfirmDialog entrance. The resting state stays fully visible, so a browser
  * without `@starting-style` (iOS < 17.4) shows the dialog unanimated instead of
@@ -395,7 +396,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   /* Motion Constitution v1: non-essential transforms are removed outright,
-   * not merely sped up, so no element shifts under the user's finger. */
-  .motion-press:active { transform: none; }
+   * not merely sped up, so no element shifts under the user's finger.
+   * (Selectors mirror the motion block above so they win on source order.) */
+  .motion-press:active:not([disabled]) { transform: none; }
   .confirm-dialog[open] { transform: none; }
 }
