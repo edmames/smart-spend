@@ -141,11 +141,12 @@ export function FormAmount<T extends FieldValues>({
   );
 }
 
-export function FormDate<T extends FieldValues>({ control, name }: { control: Control<T>; name: Path<T> }) {
+export function FormDate<T extends FieldValues>({ control, name, id }: { control: Control<T>; name: Path<T>; id?: string }) {
   const { fieldState } = useController({ control, name });
+  const inputId = id ?? `${String(name)}-input`;
   return (
-    <Field label="Tanggal" error={fieldState.error?.message}>
-      <CalendarDateInput control={control} name={name} />
+    <Field label="Tanggal" error={fieldState.error?.message} htmlFor={inputId}>
+      <CalendarDateInput control={control} name={name} id={inputId} />
     </Field>
   );
 }

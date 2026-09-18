@@ -82,10 +82,9 @@ export function WalletCard({ wallet, showArchive = true }: { wallet: Wallet; sho
           type="button"
           onClick={() => void archiveWallet(wallet.id)}
           aria-label={`Arsipkan ${wallet.name}`}
-          title="Arsipkan dompet"
           className="mr-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-elevated hover:text-ink"
         >
-          <Archive className="h-4 w-4" />
+          <Archive className="h-4 w-4" aria-hidden />
         </button>
       ) : null}
 
@@ -94,10 +93,9 @@ export function WalletCard({ wallet, showArchive = true }: { wallet: Wallet; sho
           type="button"
           onClick={() => void restoreWallet(wallet.id)}
           aria-label={`Pulihkan ${wallet.name}`}
-          title="Pulihkan dari arsip"
           className="mr-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-elevated hover:text-ink"
         >
-          <ArchiveRestore className="h-4 w-4" />
+          <ArchiveRestore className="h-4 w-4" aria-hidden />
         </button>
       ) : null}
     </Card>

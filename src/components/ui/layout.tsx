@@ -78,7 +78,6 @@ export function IconButton({
     <button
       type="button"
       aria-label={label}
-      title={label}
       className={cn(
         "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-muted transition hover:border-brand/40 hover:text-brand",
         className,
@@ -204,7 +203,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line bg-surface px-4 py-7 text-center">
-      {icon ? <div className="text-muted">{icon}</div> : null}
+      {icon ? <div className="text-muted" aria-hidden>{icon}</div> : null}
       <p className="text-[15px] font-semibold text-ink">{title}</p>
       {description ? <p className="max-w-[34ch] text-[13px] leading-relaxed text-muted">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}

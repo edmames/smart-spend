@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useSmartSpendStore } from "@/app/store";
-import { calculateSavingsBalance, calculateTotalMoney, calculateWalletBalance } from "@/domain/ledger";
+import { calculateSavingsBalance, calculateTotalMoney, calculateWalletBalance, sortTransactions } from "@/domain/ledger";
 import {
   buildWalletRows,
   calculateSavingsProgress,
@@ -87,7 +87,7 @@ export function buildDerived(data: AppData, monthKey: string = currentMonthKey()
     budgetUsages: calculateBudgetUsageList(budgets, transactions, monthKey),
     expenseBreakdown: calculateCategoryBreakdown(transactions, { type: "expense", monthKey }),
     incomeBreakdown: calculateCategoryBreakdown(transactions, { type: "income", monthKey }),
-    transactionsDesc: [...transactions].reverse(),
+    transactionsDesc: sortTransactions(transactions).reverse(),
     walletNameById: new Map(wallets.map((wallet) => [wallet.id, wallet.name])),
     savingsNameById: new Map(savingsTargets.map((target) => [target.id, target.name])),
     isEmpty: wallets.length === 0 && transactions.length === 0 && savingsTargets.length === 0 && budgets.length === 0,

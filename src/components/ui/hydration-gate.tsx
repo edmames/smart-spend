@@ -25,7 +25,7 @@ export function HydrationGate({ children, fallback }: { children: React.ReactNod
       <div className="flex flex-col gap-3">
         <Card className="flex flex-col gap-2 border-warning/40 bg-warning-soft">
           <div className="flex items-center gap-2 text-warning">
-            <AlertTriangle className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" aria-hidden />
             <h2 className="text-[14px] font-bold">Data tersimpan tidak bisa dibaca</h2>
           </div>
           <p className="text-[13px] leading-relaxed text-ink/80">{failure.message}</p>
@@ -59,7 +59,7 @@ export function HydrationGate({ children, fallback }: { children: React.ReactNod
             ) : null}
           </div>
           <p className="flex items-start gap-1.5 text-[12px] text-muted">
-            <DatabaseZap className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <DatabaseZap className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
             Salinan aslinya disimpan terpisah di browser (tidak ditimpa), jadi data masih bisa dipulihkan manual.
           </p>
         </Card>

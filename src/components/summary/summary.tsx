@@ -48,7 +48,7 @@ export function MonthPicker({
         onClick={() => onChange(shiftMonthKey(monthKey, 1))}
         className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
       >
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="h-4 w-4" aria-hidden />
       </button>
     </div>
   );

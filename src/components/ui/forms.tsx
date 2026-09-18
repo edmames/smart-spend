@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useId, useState } from "react";
 import { useController, type Control, type FieldValues, type Path } from "react-hook-form";
 import { cn } from "@/lib/cn";
@@ -26,16 +27,28 @@ export interface FieldProps {
 }
 
 export function Field({ label, hint, error, htmlFor, optional, children, className }: FieldProps) {
+  const describedById = useId();
+  const errorDescId = error ? `${describedById}-error` : undefined;
+  const hintDescId = hint && !error ? `${describedById}-hint` : undefined;
+  const describedBy = [errorDescId, hintDescId].filter(Boolean).join(" ") || undefined;
+  const child = React.Children.only(children);
+  const enhanced =
+    React.isValidElement<{ "aria-describedby"?: string }>(child) &&
+    typeof child.props === "object" &&
+    child.props !== null &&
+    !("aria-describedby" in child.props)
+      ? React.cloneElement(child as React.ReactElement<Record<string, unknown>>, { "aria-describedby": describedBy })
+      : child;
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <label htmlFor={htmlFor} className="flex items-baseline justify-between gap-2 text-sm font-medium text-ink">
         <span>{label}</span>
         {optional ? <span className="text-xs font-normal text-muted">opsional</span> : null}
       </label>
-      {children}
-      {hint && !error ? <p className="text-xs text-muted">{hint}</p> : null}
+      {enhanced}
+      {hint && !error ? <p id={hintDescId} className="text-xs text-muted">{hint}</p> : null}
       {error ? (
-        <p role="alert" className="text-xs font-medium text-danger">
+        <p id={errorDescId} role="alert" className="text-xs font-medium text-danger">
           {error}
         </p>
       ) : null}
@@ -188,18 +201,26 @@ export function AmountInput<T extends FieldValues>({
 }
 
 /** A controlled calendar date: selected text is passed through unchanged. */
-export function CalendarDateInput<T extends FieldValues>({ control, name }: { control: Control<T>; name: Path<T> }) {
+export function CalendarDateInput<T extends FieldValues>({
+  control,
+  name,
+  id,
+  "aria-describedby": describedBy,
+}: { control: Control<T>; name: Path<T>; id?: string; "aria-describedby"?: string }) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
   const { field } = useController({ control, name });
   const { value, onChange, onBlur, name: fieldName, ref } = field;
   return (
     <TextInput
+      id={inputId}
       type="date"
+      aria-describedby={describedBy}
       value={typeof value === "string" ? value : ""}
       onChange={(event) => onChange(event.target.value)}
       onBlur={onBlur}
       name={fieldName}
       ref={ref}
-      aria-label="Tanggal"
     />
   );
 }
@@ -244,7 +265,7 @@ export function Segmented<T extends string>({
                   : "border-line bg-surface text-ink hover:border-brand/40 hover:bg-brand-soft/60",
               )}
             >
-              {option.icon}
+              {option.icon ? <span aria-hidden>{option.icon}</span> : null}
               <span className="truncate">{option.label}</span>
             </button>
           );
