@@ -1,9 +1,14 @@
 /**
- * Design tokens for Phase 1.
+ * Categorical data palette (`ChartColorId` → concrete Tailwind classes).
+ *
+ * Governance: these are *data* colours — they identify a category, they do not
+ * express UI meaning. Never use them for chrome (surfaces, text, borders,
+ * buttons); use the semantic tokens in `globals.css` instead.
  *
  * Colour identifiers used by category metadata (`ChartColorId`) are resolved to
  * concrete Tailwind classes *here* — the domain only stores the identifier, so a
- * palette change never touches stored data.
+ * palette change never touches stored data. Values are theme-independent because
+ * the same identifier must look like the same category in light and dark.
  *
  * NOTE: every class name is written out literally so Tailwind's scanner can see it.
  */

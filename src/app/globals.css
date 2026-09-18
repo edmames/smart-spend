@@ -1,7 +1,27 @@
 @import "tailwindcss";
 
-/* Semantic colors are the source of truth for both themes. Existing utility names
- * remain aliases so feature screens inherit the foundation without behavior edits. */
+/* ============================================================================
+ * SmartSpend Visual Constitution v1 — "Calm Personal Finance OS"
+ *
+ * Calm, clear, practical, trustworthy. Hierarchy and whitespace carry meaning;
+ * decoration does not. SmartSpend green is a *selective* accent, never a wash.
+ *
+ *   - sections do not automatically need cards; never nest cards
+ *   - no glassmorphism, gradients or glow; shadows stay minimal
+ *   - light and dark are the *same* semantic model: same names, different values
+ *   - Lucide icons only; motion is out of scope for this layer
+ *
+ * Token layers — reach for the highest one that fits, never a raw hex:
+ *   1. Tailwind theme vars  --color-*, --radius-*, --shadow-*, --spacing-*
+ *   2. semantic vars        :root { --surface, --muted, --subtle, ... }
+ *   3. component classes    .page-title, .metadata, .financial-display
+ *
+ * The financial palette (income/expense/savings/transfer) carries meaning;
+ * success/danger/warning/info are the neutral UI-state aliases over it. Both
+ * vocabularies resolve to one palette, so a colour is never defined twice.
+ * Existing utility names (ink, line, canvas, brand) remain aliases so feature
+ * screens inherit the foundation without behaviour edits.
+ * ========================================================================== */
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
@@ -10,6 +30,8 @@
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-soft: var(--primary-soft);
   --color-primary-foreground: var(--primary-foreground);
   --color-ink: var(--foreground);
   --color-line: var(--border);
@@ -25,10 +47,64 @@
   --color-savings-soft: var(--savings-soft);
   --color-transfer: var(--transfer);
   --color-transfer-soft: var(--transfer-soft);
+  /* Text hierarchy: foreground (primary) · muted (secondary) · subtle (tertiary). */
+  --color-subtle: var(--subtle);
+  /* Separation: border/line (quiet hairline) · border-strong (emphasis, selected). */
+  --color-border-strong: var(--border-strong);
+  --color-line-strong: var(--border-strong);
+  /* Scrim behind dialogs and sheets. */
+  --color-overlay: var(--overlay);
+  /* UI-state vocabulary over the financial palette (one palette, two names).
+   * Each state also has an on-colour so solid fills never hardcode text-white. */
+  --color-success: var(--income);
+  --color-success-soft: var(--income-soft);
+  --color-success-foreground: var(--income-foreground);
   --color-danger: var(--expense);
+  --color-danger-soft: var(--expense-soft);
+  --color-danger-foreground: var(--expense-foreground);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--transfer);
+  --color-info-soft: var(--transfer-soft);
+  --color-info-foreground: var(--transfer-foreground);
+  /* Elevation, theme-aware: the shadow stacks live with the palette below. */
+  --shadow-subtle: var(--elevation-subtle);
+  --shadow-raised: var(--elevation-raised);
+  --shadow-overlay: var(--elevation-overlay);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Structural tokens — theme-independent, so they are plain literals.
+ *
+ * Spacing scale (px): 4 · 8 · 12 · 16 · 24 · 32 · 48
+ *   2xs 4  inline marks, icon gaps     lg 24  section rhythm
+ *   xs  8  padding inside a control    xl 32  page blocks
+ *   sm  12 list-row rhythm           2xl 48  hero / empty-state breathing
+ *   md 16  card padding, field rhythm
+ * Numeric Tailwind steps (p-2, gap-3, …) stay valid; the named steps are the
+ * canonical scale for new work.
+ *
+ * Radius levels: small · medium · large · x-large · full
+ *   small   rounded-lg   8px   chips, inline rows, icon buttons
+ *   medium  rounded-xl  12px   controls, cards, list rows (the default)
+ *   large   rounded-2xl 16px   dialogs and sheets
+ *   x-large rounded-3xl 24px   reserved for promotion, never content cards
+ *   full    rounded-full      pills, progress tracks, avatars
+ * The role aliases below point at those levels so screens stop guessing.
+ */
+@theme {
+  --spacing-2xs: 0.25rem;
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+
+  --radius-control: 0.75rem;
+  --radius-surface: 0.75rem;
+  --radius-overlay: 1rem;
 }
 
 :root {
@@ -53,11 +129,26 @@
   --transfer-soft: #e9f2f8;
   --warning: #85550e;
   --warning-soft: #fff4db;
+  --subtle: #5a7074;
+  --border-strong: #c3d4d0;
+  --overlay: rgb(15 40 45 / 0.45);
+  /* On-colours for solid semantic fills (>=4.5:1 against their own fill). */
+  --income-foreground: #ffffff;
+  --expense-foreground: #ffffff;
+  --warning-foreground: #ffffff;
+  --transfer-foreground: #ffffff;
+  /* Elevation shadow stacks — distinct from the `--elevated` surface colour.
+   * Level 0 is deliberately shadow-less: canvas + hairline border only. */
+  --elevation-subtle: 0 1px 2px 0 rgb(15 40 45 / 0.05);
+  --elevation-raised: 0 2px 8px -2px rgb(15 40 45 / 0.1), 0 1px 2px -1px rgb(15 40 45 / 0.06);
+  --elevation-overlay: 0 16px 40px -12px rgb(15 40 45 / 0.28);
   --nav-height: 56px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    /* Same semantic names as :root — only the values change. This block and the
+     * explicit [data-theme="dark"] block below must stay identical. */
     color-scheme: dark;
     --background: #0e151b;
     --surface: #172229;
@@ -79,10 +170,21 @@
     --transfer-soft: #203947;
     --warning: #edc06d;
     --warning-soft: #413521;
+    --subtle: #8a9d9f;
+    --border-strong: #43595f;
+    --overlay: rgb(0 0 0 / 0.6);
+    --income-foreground: #062f24;
+    --expense-foreground: #3d0f16;
+    --warning-foreground: #3a2c07;
+    --transfer-foreground: #04283a;
+    --elevation-subtle: 0 1px 2px 0 rgb(0 0 0 / 0.45);
+    --elevation-raised: 0 2px 10px -2px rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.45);
+    --elevation-overlay: 0 18px 48px -12px rgb(0 0 0 / 0.7);
   }
 }
 
 :root[data-theme="dark"] {
+  /* Mirror of the prefers-color-scheme dark block above — keep both in sync. */
   color-scheme: dark;
   --background: #0e151b;
   --surface: #172229;
@@ -104,6 +206,16 @@
   --transfer-soft: #203947;
   --warning: #edc06d;
   --warning-soft: #413521;
+  --subtle: #8a9d9f;
+  --border-strong: #43595f;
+  --overlay: rgb(0 0 0 / 0.6);
+  --income-foreground: #062f24;
+  --expense-foreground: #3d0f16;
+  --warning-foreground: #3a2c07;
+  --transfer-foreground: #04283a;
+  --elevation-subtle: 0 1px 2px 0 rgb(0 0 0 / 0.45);
+  --elevation-raised: 0 2px 10px -2px rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.45);
+  --elevation-overlay: 0 18px 48px -12px rgb(0 0 0 / 0.7);
 }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -136,11 +248,22 @@ body {
   }
 }
 
+/* Typography hierarchy — one level per role; never invent a size inline.
+ *   display   .financial-display  money hero (clamped)
+ *   page      .page-title         screen / route title
+ *   section   .section-title      group heading above a set of rows
+ *   item      .card-title         row or card title
+ *   body      .body-copy          prose, descriptions
+ *   small     .small-copy         dense secondary prose
+ *   caption   .metadata           timestamps, counts, helper text
+ *   controls  .field-label        form labels and control text
+ * Anything that renders money also carries `.tabular` (or `.monetary-value`). */
 .financial-display { font-size: clamp(1.55rem, 7vw, 1.9rem); font-weight: 750; line-height: 1.15; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
 .page-title { font-size: 1.125rem; font-weight: 700; line-height: 1.3; letter-spacing: -0.02em; }
 .section-title { font-size: 0.8rem; font-weight: 700; line-height: 1.35; }
 .card-title { font-size: 0.925rem; font-weight: 700; line-height: 1.4; }
 .body-copy { font-size: 0.875rem; line-height: 1.5; }
+.small-copy { font-size: 0.8125rem; line-height: 1.45; }
 .metadata { font-size: 0.75rem; line-height: 1.4; color: var(--muted); }
 .field-label { font-size: 0.875rem; font-weight: 600; }
 .monetary-value, .tabular { font-variant-numeric: tabular-nums; }
