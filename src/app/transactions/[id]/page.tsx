@@ -101,7 +101,7 @@ function TransactionDetail({ id }: { id: string }) {
               )}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setAskDelete(true)} aria-label="Hapus transaksi">
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" aria-hidden />
             </Button>
           </div>
         </div>

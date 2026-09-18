@@ -38,18 +38,31 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const phraseRef = useRef<HTMLInputElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const [phrase, setPhrase] = useState("");
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (open && !dialog.open) {
+      previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
       dialog.showModal();
-      phraseRef.current?.focus();
+      // Focus the phrase input when present, otherwise let the browser focus the
+      // dialog itself — the first Tab will reach the cancel button.
+      if (requirePhrase) {
+        phraseRef.current?.focus();
+      } else {
+        const firstFocusable = dialog
+          .querySelector<HTMLElement>("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")
+          ?.closest("button");
+        firstFocusable?.focus();
+      }
     } else if (!open && dialog.open) {
       dialog.close();
+      // Restore focus to the element that triggered the dialog.
+      previouslyFocusedRef.current?.focus?.();
     }
-  }, [open]);
+  }, [open, requirePhrase]);
 
   const ready = !requirePhrase || phrase.trim() === requirePhrase;
 
@@ -57,6 +70,8 @@ export function ConfirmDialog({
     <dialog
       ref={dialogRef}
       onClose={onClose}
+      aria-labelledby="confirm-dialog-title"
+      aria-describedby={description ? "confirm-dialog-desc" : undefined}
       className={cn(
         "m-auto w-[min(92vw,26rem)] rounded-2xl border border-line bg-surface p-0 shadow-xl backdrop:bg-ink/45",
         "[&[open]]:block",
@@ -73,8 +88,8 @@ export function ConfirmDialog({
         className="flex flex-col gap-3 p-4"
       >
         <div className="flex flex-col gap-1.5">
-          <h2 className="text-[16px] font-bold text-ink">{title}</h2>
-          {description ? <div className="text-[13px] leading-relaxed text-muted">{description}</div> : null}
+          <h2 id="confirm-dialog-title" className="text-[16px] font-bold text-ink">{title}</h2>
+          {description ? <div id="confirm-dialog-desc" className="text-[13px] leading-relaxed text-muted">{description}</div> : null}
         </div>
 
         {children ? <div className="flex flex-col gap-2 text-[13px] text-ink">{children}</div> : null}

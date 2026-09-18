@@ -8,6 +8,7 @@ import { Badge, Button, Card, EmptyState, LinkButton, SectionTitle } from "@/com
 import { useSmartSpendStore } from "@/app/store";
 import { formatIDR } from "@/domain/money";
 import { calculateTotalMoney } from "@/domain/ledger";
+import { useMemo } from "react";
 import { useHideBalances, maskMoney } from "@/components/settings/money-mask";
 
 export function WalletsContent() {
@@ -16,7 +17,10 @@ export function WalletsContent() {
   const hideBalances = useHideBalances();
   const active = data.wallets.filter((wallet) => wallet.archivedAt == null);
   const archived = data.wallets.filter((wallet) => wallet.archivedAt != null);
-  const totals = calculateTotalMoney(data.wallets, data.savingsTargets, data.transactions);
+  const totals = useMemo(
+    () => calculateTotalMoney(data.wallets, data.savingsTargets, data.transactions),
+    [data.wallets, data.savingsTargets, data.transactions],
+  );
 
   if (data.wallets.length === 0) {
     return (

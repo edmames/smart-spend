@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { PiggyBank, Plus } from "lucide-react";
 import { SavingsTargetCard } from "@/components/savings/savings-card";
@@ -17,8 +17,13 @@ export function SavingsContent() {
   const hideBalances = useHideBalances();
   const active = data.savingsTargets.filter((target) => target.archivedAt == null);
   const archived = data.savingsTargets.filter((target) => target.archivedAt != null);
-  const totalSaved = active.reduce((sum, target) => sum + calculateSavingsBalance(data.transactions, target.id), 0);
-  const reached = active.filter((target) => calculateSavingsProgress(target, data.transactions).goalReached).length;
+  const { totalSaved, reached } = useMemo(
+    () => ({
+      totalSaved: active.reduce((sum, target) => sum + calculateSavingsBalance(data.transactions, target.id), 0),
+      reached: active.filter((target) => calculateSavingsProgress(target, data.transactions).goalReached).length,
+    }),
+    [active, data.transactions],
+  );
 
   if (data.savingsTargets.length === 0) {
     return (

@@ -187,7 +187,6 @@ export function SixMonthTrendCard({ trend, monthKey }: { trend: TrendPoint[]; mo
                       style={{ height: `${incomeH}%`, minHeight: point.income > 0 ? "4px" : "2px" }}
                       role="img"
                       aria-label={`Pemasukan ${formatMonthLabel(point.monthKey)} ${formatIDR(point.income)}`}
-                      title={`Pemasukan ${formatMonthLabel(point.monthKey)} ${formatIDR(point.income)}`}
                     />
                     <span
                       className={cn(
@@ -197,7 +196,6 @@ export function SixMonthTrendCard({ trend, monthKey }: { trend: TrendPoint[]; mo
                       style={{ height: `${expenseH}%`, minHeight: point.expense > 0 ? "4px" : "2px" }}
                       role="img"
                       aria-label={`Pengeluaran ${formatMonthLabel(point.monthKey)} ${formatIDR(point.expense)}`}
-                      title={`Pengeluaran ${formatMonthLabel(point.monthKey)} ${formatIDR(point.expense)}`}
                     />
                   </div>
                   <span className={cn("text-[10px] font-semibold leading-none", isCurrent ? "text-ink" : "text-muted")}>

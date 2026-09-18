@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useId, useState } from "react";
 import { useController, type Control, type FieldValues, type Path } from "react-hook-form";
 import { cn } from "@/lib/cn";
@@ -26,16 +27,36 @@ export interface FieldProps {
 }
 
 export function Field({ label, hint, error, htmlFor, optional, children, className }: FieldProps) {
+  const describedById = useId();
+  const errorDescId = error ? `${describedById}-error` : undefined;
+  const hintDescId = hint && !error ? `${describedById}-hint` : undefined;
+  const generatedIds = [errorDescId, hintDescId].filter(Boolean);
+
+  // Merge generated error/hint IDs with any existing aria-describedby on the child,
+  // so a child's own describedby refs are preserved and never duplicated.
+  const renderedChildren =
+    React.isValidElement<{ "aria-describedby"?: string }>(children) &&
+    typeof children.props === "object" &&
+    children.props !== null
+      ? (() => {
+          const existing = children.props["aria-describedby"];
+          const existingIds = existing ? existing.split(" ").filter(Boolean) : [];
+          const merged = [...new Set([...existingIds, ...generatedIds])].join(" ") || undefined;
+          if (merged === existing) return children;
+          return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, { "aria-describedby": merged });
+        })()
+      : children;
+
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <label htmlFor={htmlFor} className="flex items-baseline justify-between gap-2 text-sm font-medium text-ink">
         <span>{label}</span>
         {optional ? <span className="text-xs font-normal text-muted">opsional</span> : null}
       </label>
-      {children}
-      {hint && !error ? <p className="text-xs text-muted">{hint}</p> : null}
+      {renderedChildren}
+      {hint && !error ? <p id={hintDescId} className="text-xs text-muted">{hint}</p> : null}
       {error ? (
-        <p role="alert" className="text-xs font-medium text-danger">
+        <p id={errorDescId} role="alert" className="text-xs font-medium text-danger">
           {error}
         </p>
       ) : null}
@@ -188,18 +209,26 @@ export function AmountInput<T extends FieldValues>({
 }
 
 /** A controlled calendar date: selected text is passed through unchanged. */
-export function CalendarDateInput<T extends FieldValues>({ control, name }: { control: Control<T>; name: Path<T> }) {
+export function CalendarDateInput<T extends FieldValues>({
+  control,
+  name,
+  id,
+  "aria-describedby": describedBy,
+}: { control: Control<T>; name: Path<T>; id?: string; "aria-describedby"?: string }) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
   const { field } = useController({ control, name });
   const { value, onChange, onBlur, name: fieldName, ref } = field;
   return (
     <TextInput
+      id={inputId}
       type="date"
+      aria-describedby={describedBy}
       value={typeof value === "string" ? value : ""}
       onChange={(event) => onChange(event.target.value)}
       onBlur={onBlur}
       name={fieldName}
       ref={ref}
-      aria-label="Tanggal"
     />
   );
 }
@@ -225,10 +254,11 @@ export function Segmented<T extends string>({
   columns?: 2 | 3 | 5;
 }) {
   const gridCols = columns === 2 ? "grid-cols-2" : columns === 5 ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-3";
+  const labelId = React.useId();
   return (
     <div className="flex flex-col gap-1.5">
-      {label ? <span className="text-sm font-medium text-ink">{label}</span> : null}
-      <div role="group" aria-label={label} className={cn("grid gap-1.5", gridCols)}>
+      {label ? <span id={labelId} className="text-sm font-medium text-ink">{label}</span> : null}
+      <div role="group" aria-labelledby={label ? labelId : undefined} className={cn("grid gap-1.5", gridCols)}>
         {options.map((option) => {
           const active = option.value === value;
           return (
@@ -244,7 +274,7 @@ export function Segmented<T extends string>({
                   : "border-line bg-surface text-ink hover:border-brand/40 hover:bg-brand-soft/60",
               )}
             >
-              {option.icon}
+              {option.icon ? <span aria-hidden>{option.icon}</span> : null}
               <span className="truncate">{option.label}</span>
             </button>
           );

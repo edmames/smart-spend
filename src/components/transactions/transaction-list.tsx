@@ -238,7 +238,7 @@ export function TransactionFilterPanel({
               aria-label="Bersihkan pencarian"
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4" aria-hidden />
             </button>
           ) : null}
         </div>
