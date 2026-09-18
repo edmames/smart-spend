@@ -8,6 +8,11 @@ import { cn } from "@/lib/cn";
  * Confirmation used wherever a mutation is destructive (delete transaction,
  * reset all data, replace dataset on import). Implemented with the native
  * `<dialog>` element so Escape, focus trapping and inertness come for free.
+ *
+ * Visual layer: the highest elevation in the app (`shadow-overlay`), the `full`
+ * radius level (`radius-overlay`) and the shared `overlay` scrim. The confirm
+ * action uses the danger tokens, so the destructive choice never relies on a
+ * hardcoded colour. Behaviour and focus management are untouched.
  */
 export interface ConfirmDialogProps {
   open: boolean;
@@ -73,7 +78,7 @@ export function ConfirmDialog({
       aria-labelledby="confirm-dialog-title"
       aria-describedby={description ? "confirm-dialog-desc" : undefined}
       className={cn(
-        "m-auto w-[min(92vw,26rem)] rounded-2xl border border-line bg-surface p-0 shadow-xl backdrop:bg-ink/45",
+        "m-auto w-[min(92vw,26rem)] rounded-overlay border border-line bg-surface p-0 shadow-overlay backdrop:bg-overlay",
         "[&[open]]:block",
       )}
     >
@@ -88,20 +93,20 @@ export function ConfirmDialog({
         className="flex flex-col gap-3 p-4"
       >
         <div className="flex flex-col gap-1.5">
-          <h2 id="confirm-dialog-title" className="text-[16px] font-bold text-ink">{title}</h2>
-          {description ? <div id="confirm-dialog-desc" className="text-[13px] leading-relaxed text-muted">{description}</div> : null}
+          <h2 id="confirm-dialog-title" className="card-title text-ink">{title}</h2>
+          {description ? <div id="confirm-dialog-desc" className="small-copy text-muted">{description}</div> : null}
         </div>
 
-        {children ? <div className="flex flex-col gap-2 text-[13px] text-ink">{children}</div> : null}
+        {children ? <div className="small-copy flex flex-col gap-2 text-ink">{children}</div> : null}
 
         {requirePhrase ? (
-          <label className="flex flex-col gap-1.5 text-[13px] font-medium text-ink">
+          <label className="small-copy flex flex-col gap-1.5 font-medium text-ink">
             Ketik <span className="font-mono font-bold">{requirePhrase}</span> untuk mengonfirmasi
             <input
               ref={phraseRef}
               value={phrase}
               onChange={(event) => setPhrase(event.target.value)}
-              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              className="w-full rounded-control border border-line bg-surface px-sm py-2 text-sm font-normal text-ink outline-none transition-colors placeholder:text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20"
               placeholder={requirePhrase}
               autoComplete="off"
             />

@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { useController, type Control, type FieldValues, type Path } from "react-hook-form";
 import { cn } from "@/lib/cn";
 import { amountFromMoneyInput, digitsFromMoneyInput, formatNumberGrouping } from "@/domain/money";
+import { ICON_SIZE, ICON_STROKE } from "@/components/ui/layout";
 
 /**
  * SmartSpend form primitives.
@@ -14,6 +15,12 @@ import { amountFromMoneyInput, digitsFromMoneyInput, formatNumberGrouping } from
  *    value is always an integer number of Rupiah (see `AmountInput`).
  *  - Every control is a real `<label>`-associated element, keyboard reachable,
  *    and errors are announced next to the field.
+ *
+ * Visual layer: one shared `CONTROL` recipe built from the Visual Constitution
+ * tokens in `globals.css`. Controls keep a >=44px touch target, which is why the
+ * vertical padding stays explicit (10px) instead of snapping to the spacing
+ * scale. Selection controls signal the chosen option with a tinted brand
+ * surface, a brand border and a weight change — green is reserved, not spread.
  */
 
 export interface FieldProps {
@@ -49,12 +56,12 @@ export function Field({ label, hint, error, htmlFor, optional, children, classNa
 
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={htmlFor} className="flex items-baseline justify-between gap-2 text-sm font-medium text-ink">
+      <label htmlFor={htmlFor} className="field-label flex items-baseline justify-between gap-2 text-ink">
         <span>{label}</span>
-        {optional ? <span className="text-xs font-normal text-muted">opsional</span> : null}
+        {optional ? <span className="metadata font-normal">opsional</span> : null}
       </label>
       {renderedChildren}
-      {hint && !error ? <p id={hintDescId} className="text-xs text-muted">{hint}</p> : null}
+      {hint && !error ? <p id={hintDescId} className="metadata">{hint}</p> : null}
       {error ? (
         <p id={errorDescId} role="alert" className="text-xs font-medium text-danger">
           {error}
@@ -65,7 +72,7 @@ export function Field({ label, hint, error, htmlFor, optional, children, classNa
 }
 
 const CONTROL =
-  "w-full min-w-0 rounded-xl border border-line bg-surface px-3 py-2.5 text-[15px] text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:opacity-60";
+  "w-full min-w-0 rounded-control border border-line bg-surface px-sm py-2.5 text-[15px] text-ink outline-none transition-colors placeholder:text-subtle focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-60";
 
 export function TextInput({
   className,
@@ -113,9 +120,9 @@ export function Select({
       <svg
         aria-hidden
         viewBox="0 0 20 20"
-        className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+        className={cn("pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted", ICON_SIZE.sm)}
       >
-        <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" strokeWidth={ICON_STROKE.ui} strokeLinecap="round" />
       </svg>
     </div>
   );
@@ -268,10 +275,10 @@ export function Segmented<T extends string>({
               aria-pressed={active}
               onClick={() => onChange(option.value)}
               className={cn(
-                "flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border px-2.5 py-2 text-[13px] font-semibold transition",
+                "flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-control border px-2.5 py-2 text-[13px] transition-colors",
                 active
-                  ? "border-brand bg-brand text-primary-foreground"
-                  : "border-line bg-surface text-ink hover:border-brand/40 hover:bg-brand-soft/60",
+                  ? "border-primary bg-primary-soft font-semibold text-primary-strong"
+                  : "border-line bg-surface font-medium text-ink hover:border-line-strong hover:bg-elevated/60",
               )}
             >
               {option.icon ? <span aria-hidden>{option.icon}</span> : null}
@@ -312,8 +319,10 @@ export function ChipToggle<T extends string>({
               aria-pressed={active}
               onClick={() => onToggle(option.value)}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                active ? "border-brand bg-brand text-primary-foreground" : "border-line bg-surface text-muted hover:text-ink",
+                "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                active
+                  ? "border-primary bg-primary-soft font-semibold text-primary-strong"
+                  : "border-line bg-surface font-medium text-muted hover:border-line-strong hover:text-ink",
               )}
             >
               {option.label}

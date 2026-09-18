@@ -1,8 +1,9 @@
 "use client";
 
 import { AlertTriangle, DatabaseZap } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { useSmartSpendStore } from "@/app/store";
-import { Button, Card, LoadingPanel } from "@/components/ui/layout";
+import { Button, Card, ICON_SIZE, LoadingPanel } from "@/components/ui/layout";
 
 /**
  * Every data-driven screen is wrapped in this gate.
@@ -25,12 +26,12 @@ export function HydrationGate({ children, fallback }: { children: React.ReactNod
       <div className="flex flex-col gap-3">
         <Card className="flex flex-col gap-2 border-warning/40 bg-warning-soft">
           <div className="flex items-center gap-2 text-warning">
-            <AlertTriangle className="h-4 w-4" aria-hidden />
-            <h2 className="text-[14px] font-bold">Data tersimpan tidak bisa dibaca</h2>
+            <AlertTriangle className={ICON_SIZE.sm} aria-hidden />
+            <h2 className="card-title">Data tersimpan tidak bisa dibaca</h2>
           </div>
-          <p className="text-[13px] leading-relaxed text-ink/80">{failure.message}</p>
+          <p className="small-copy text-ink">{failure.message}</p>
           {failure.issues.length > 0 ? (
-            <ul className="flex list-disc flex-col gap-1 pl-4 text-[12px] text-muted">
+            <ul className="metadata flex list-disc flex-col gap-1 pl-4">
               {failure.issues.slice(0, 6).map((issue) => (
                 <li key={issue}>{issue}</li>
               ))}
@@ -58,8 +59,8 @@ export function HydrationGate({ children, fallback }: { children: React.ReactNod
               </Button>
             ) : null}
           </div>
-          <p className="flex items-start gap-1.5 text-[12px] text-muted">
-            <DatabaseZap className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <p className="metadata flex items-start gap-1.5">
+            <DatabaseZap className={cn("mt-0.5 shrink-0", ICON_SIZE.inline)} aria-hidden />
             Salinan aslinya disimpan terpisah di browser (tidak ditimpa), jadi data masih bisa dipulihkan manual.
           </p>
         </Card>

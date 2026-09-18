@@ -7,29 +7,46 @@ import { cn } from "@/lib/cn";
 /**
  * SmartSpend — layout & surface primitives.
  *
- * Shared presentation primitives. The root layout owns content width and fixed-nav
- * clearance; these components keep feature pages visually consistent.
+ * Shared presentation primitives, built on the Visual Constitution v1 tokens in
+ * `globals.css`. The root layout owns content width and fixed-nav clearance;
+ * these components keep feature pages visually consistent.
+ *
+ * House rules encoded here:
+ *  - every control is a >=44px touch target (min-h-11) and keeps the global
+ *    focus-visible ring, so no primitive needs `outline-none`;
+ *  - states are static CSS (`hover` / `active` / `disabled` / `aria-pressed`),
+ *    never animated — motion is owned by a later phase;
+ *  - off-scale spacing that is tuned for touch targets or density (control
+ *    padding, card padding) stays explicit rather than being snapped.
  */
+
+/** Lucide sizing convention for chrome icons. Decorative icons stay `aria-hidden`. */
+export const ICON_SIZE = { inline: "h-3.5 w-3.5", sm: "h-4 w-4", md: "h-5 w-5" } as const;
+
+/** Stroke convention: 1.9 for chrome, 2.3 only to emphasise an active state. */
+export const ICON_STROKE = { ui: 1.9, emphasis: 2.3 } as const;
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "soft";
 type Size = "sm" | "md" | "lg";
 
+const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-brand text-primary-foreground hover:bg-brand-strong active:bg-brand-strong",
-  secondary: "bg-surface text-ink border border-line hover:border-brand/50 hover:text-brand",
-  soft: "bg-brand-soft text-brand-strong hover:bg-brand-soft/70",
-  ghost: "text-muted hover:text-ink hover:bg-elevated",
-  danger: "bg-expense text-white hover:bg-expense/90",
+  primary: cn("bg-primary text-primary-foreground hover:bg-primary-strong active:bg-primary-strong", FOCUS),
+  secondary: cn("border border-line bg-surface text-ink hover:border-primary/45 hover:text-primary active:bg-elevated", FOCUS),
+  soft: cn("bg-primary-soft text-primary-strong hover:bg-primary-soft/70 active:bg-primary-soft", FOCUS),
+  ghost: cn("text-muted hover:bg-elevated hover:text-ink active:bg-elevated/70", FOCUS),
+  danger: cn("bg-danger text-danger-foreground hover:bg-danger/90 active:bg-danger/80", FOCUS),
 };
 
 const SIZES: Record<Size, string> = {
-  sm: "min-h-11 px-3 text-[13px] rounded-lg gap-1.5",
-  md: "min-h-11 px-3.5 text-sm rounded-xl gap-2",
-  lg: "h-12 px-4 text-[15px] rounded-xl gap-2",
+  sm: "min-h-11 rounded-lg gap-1.5 px-sm text-[13px]",
+  md: "min-h-11 rounded-control gap-2 px-3.5 text-sm",
+  lg: "min-h-12 rounded-control gap-2 px-md text-[15px]",
 };
 
 const BASE =
-  "inline-flex select-none items-center justify-center font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex select-none items-center justify-center font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
 export function buttonClass(variant: Variant = "primary", size: Size = "md", extra?: string): string {
   return cn(BASE, VARIANTS[variant], SIZES[size], extra);
@@ -68,6 +85,10 @@ export function LinkButton({
   );
 }
 
+/**
+ * Square, icon-only control. `label` is required because the icon alone carries
+ * the name — render the icon `aria-hidden` and size it with `ICON_SIZE.md`.
+ */
 export function IconButton({
   label,
   className,
@@ -79,7 +100,8 @@ export function IconButton({
       type="button"
       aria-label={label}
       className={cn(
-        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-muted transition hover:border-brand/40 hover:text-brand",
+        "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control border border-line bg-surface text-muted transition-colors hover:border-primary/45 hover:text-primary active:bg-elevated disabled:cursor-not-allowed disabled:opacity-50",
+        FOCUS,
         className,
       )}
       {...props}
@@ -89,19 +111,41 @@ export function IconButton({
   );
 }
 
+/**
+ * A surface for content that is genuinely framed as one unit.
+ *
+ * A section is *not* automatically a card: use `variant="plain"` for grouped
+ * content that should read as part of the page, and keep cards un-nested.
+ */
 export function Card({
   children,
   className,
   as: Tag = "div",
   padded = true,
+  variant = "surface",
+  interactive = false,
 }: {
   children: ReactNode;
   className?: string;
   as?: "div" | "section" | "li" | "article";
   padded?: boolean;
+  /** `surface` = framed, `raised` = framed and lifted, `plain` = no frame. */
+  variant?: "surface" | "raised" | "plain";
+  /** Adds hover/pressed feedback for whole-surface targets. */
+  interactive?: boolean;
 }) {
   return (
-    <Tag className={cn("rounded-xl border border-line bg-surface", padded && "p-3.5", className)}>
+    <Tag
+      className={cn(
+        "rounded-surface",
+        variant === "surface" && "border border-line bg-surface",
+        variant === "raised" && "border border-line bg-surface shadow-raised",
+        variant === "plain" && "bg-transparent",
+        interactive && "transition-colors hover:border-line-strong hover:bg-elevated/50 active:bg-elevated",
+        padded && "p-3.5",
+        className,
+      )}
+    >
       {children}
     </Tag>
   );
@@ -118,7 +162,7 @@ export function StickyActions({ children, className }: { children: ReactNode; cl
   return (
     <div
       className={cn(
-        "sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom)+0.75rem)] z-10 mt-2 flex gap-2 rounded-xl border border-line bg-surface p-1.5 shadow-sm",
+        "sticky bottom-[calc(var(--nav-height)+env(safe-area-inset-bottom)+0.75rem)] z-10 mt-2 flex gap-2 rounded-surface border border-line bg-surface p-1.5 shadow-raised",
         className,
       )}
     >
@@ -174,9 +218,19 @@ export function PageHeader({
             <Link
               href={backHref}
               aria-label="Kembali"
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-elevated hover:text-ink -ml-1"
+              className={cn(
+                "-ml-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted transition-colors hover:bg-elevated hover:text-ink active:bg-elevated/70",
+                FOCUS,
+              )}
             >
-              <svg viewBox="0 0 20 20" className="h-5 w-5" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.7">
+              <svg
+                viewBox="0 0 20 20"
+                className={ICON_SIZE.md}
+                aria-hidden
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={ICON_STROKE.ui}
+              >
                 <path d="M12 4l-5 6 5 6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
@@ -185,7 +239,7 @@ export function PageHeader({
         </div>
         {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
       </div>
-      {subtitle ? <p className="mt-1.5 max-w-[60ch] text-[13px] leading-snug text-muted">{subtitle}</p> : null}
+      {subtitle ? <p className="small-copy mt-1.5 max-w-[60ch] text-muted">{subtitle}</p> : null}
     </header>
   );
 }
@@ -202,10 +256,10 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line bg-surface px-4 py-7 text-center">
-      {icon ? <div className="text-muted" aria-hidden>{icon}</div> : null}
-      <p className="text-[15px] font-semibold text-ink">{title}</p>
-      {description ? <p className="max-w-[34ch] text-[13px] leading-relaxed text-muted">{description}</p> : null}
+    <div className="flex flex-col items-center gap-2 rounded-surface border border-dashed border-line bg-surface px-4 py-7 text-center">
+      {icon ? <div className="text-subtle" aria-hidden>{icon}</div> : null}
+      <p className="card-title text-ink">{title}</p>
+      {description ? <p className="small-copy max-w-[34ch] text-muted">{description}</p> : null}
       {action ? <div className="mt-2">{action}</div> : null}
     </div>
   );
@@ -235,7 +289,7 @@ export function ProgressBar({
             : "bg-brand";
   return (
     <div
-      className={cn("h-2 w-full overflow-hidden rounded-full bg-line/70", className)}
+      className={cn("h-2 w-full overflow-hidden rounded-full bg-elevated", className)}
       role="progressbar"
       aria-valuenow={Math.round(width)}
       aria-valuemin={0}
@@ -278,7 +332,7 @@ export function Badge({
 }
 
 export function SkeletonBlock({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-xl bg-line/60", className)} />;
+  return <div className={cn("animate-pulse rounded-surface bg-elevated", className)} />;
 }
 
 export function LoadingPanel({ label = "Memuat data…" }: { label?: string }) {

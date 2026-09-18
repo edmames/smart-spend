@@ -3,6 +3,13 @@
 import { useToastStore, type ToastTone } from "@/app/toast";
 import { cn } from "@/lib/cn";
 
+/**
+ * Toast tones are deliberately theme-independent inverted panels: a toast must
+ * stay readable over any surface in both themes. The Visual Constitution has no
+ * inverted-surface token yet, so these values stay literal until one lands —
+ * do not swap them for `--primary-strong`/`--danger`, which flip to light fills
+ * in dark mode and would make the toast unreadable.
+ */
 const TONES: Record<ToastTone, string> = {
   success: "bg-[#173b3b] text-white",
   error: "bg-[#922c40] text-white",
@@ -27,7 +34,7 @@ export function Toaster() {
           type="button"
           onClick={() => dismiss(toast.id)}
           className={cn(
-            "pointer-events-auto w-full rounded-xl px-3.5 py-2.5 text-left text-[13px] font-medium shadow-lg",
+            "pointer-events-auto w-full rounded-control px-3.5 py-2.5 text-left text-[13px] font-medium shadow-overlay",
             TONES[toast.tone],
           )}
         >

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChartPie, Cog, LayoutDashboard, Receipt, Wallet } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { ICON_SIZE, ICON_STROKE } from "@/components/ui/layout";
 
 /** Primary destinations. Transaction creation lives in the Transaksi page header. */
 
@@ -57,11 +58,11 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
       href={item.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap px-0.5 text-[10px] font-semibold leading-tight transition-colors",
-        active ? "text-brand" : "text-muted hover:text-ink",
+        "flex min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-control px-0.5 text-[10px] font-semibold leading-tight transition-colors",
+        active ? "text-primary" : "text-muted hover:text-ink active:bg-elevated/60",
       )}
     >
-      <Icon className="h-[19px] w-[19px] shrink-0" strokeWidth={active ? 2.3 : 1.9} aria-hidden />
+      <Icon className={cn("shrink-0", ICON_SIZE.md)} strokeWidth={active ? ICON_STROKE.emphasis : ICON_STROKE.ui} aria-hidden />
       <span>{item.label}</span>
     </Link>
   );
