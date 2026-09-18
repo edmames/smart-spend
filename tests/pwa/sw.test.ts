@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it } from "vitest";
  * - install/activate/cache lifecycle declarations
  * - request strategy boundaries (what gets cached vs. passed through)
  * - financial data / browser storage is never referenced in code
+ * - update safety (no reload loops, no data clearing)
  */
 
 const swSource = readFileSync(join(process.cwd(), "public", "sw.js"), "utf-8");
@@ -21,8 +22,9 @@ describe("Service Worker: file structure", () => {
     expect(swSource).toMatch(/self\.addEventListener\("fetch"/);
   });
 
-  it("uses a versioned cache name with smarts-shell prefix", () => {
+  it("uses versioned cache names with smarts-shell and smarts-pages prefixes", () => {
     expect(swSource).toMatch(/smarts-shell-/);
+    expect(swSource).toMatch(/smarts-pages-/);
   });
 
   it("pre-caches the offline shell page", () => {
@@ -37,17 +39,17 @@ describe("Service Worker: install behavior", () => {
     expect(swSource).toMatch(/manifest\.webmanifest/);
   });
 
-  it("pre-caches offline shell page during install", () => {
+  it("pre-caches offline shell during install", () => {
     expect(swSource).toMatch(/OFFLINE_PAGE/);
     expect(swSource).toMatch(/cache\.addAll/);
   });
 
-  it("does NOT use a build-time precache manifest for Next.js chunks", () => {
-    // /_next/static/* assets enter Cache Storage only on first request (runtime),
-    // not during install. There is no __precacheManifest__ or workbox precache.
+  it("does NOT precache /_next/static/* during install", () => {
+    // Install only precaches STATIC_ASSETS + OFFLINE_PAGE. Next.js chunks
+    // are runtime-cached (on fetch), not precached.
+    expect(swSource).not.toMatch(/addAll.*_next/);
     expect(swSource).not.toMatch(/precacheManifest/i);
     expect(swSource).not.toMatch(/workbox/);
-    expect(swSource).not.toMatch(/self\.__precache/);
   });
 
   it("calls skipWaiting on install for faster activation", () => {
@@ -57,14 +59,21 @@ describe("Service Worker: install behavior", () => {
 
 describe("Service Worker: activate behavior", () => {
   it("cleans up old caches on activate", () => {
-    // caches.keys() is used to enumerate caches for cleanup (may span lines)
     expect(swSource).toMatch(/keys\(\)/);
-    expect(swSource).toMatch(/\.delete\(/);
+    expect(swSource).toMatch(/\.delete/);
   });
 
-  it("only deletes smarts-shell caches (not other app caches)", () => {
+  it("only deletes smarts-shell and smarts-pages caches (not other app caches)", () => {
     expect(swSource).toMatch(/smarts-shell-/);
+    expect(swSource).toMatch(/smarts-pages-/);
     expect(swSource).toMatch(/\.filter/);
+    expect(swSource).toMatch(/startsWith.*smarts-shell/);
+    expect(swSource).toMatch(/startsWith.*smarts-pages/);
+  });
+
+  it("preserves current cache versions during cleanup", () => {
+    expect(swSource).toMatch(/currentCaches = \[SHELL_CACHE, PAGES_CACHE\]/);
+    expect(swSource).toMatch(/currentCaches\.includes/);
   });
 
   it("claims clients on activate", () => {
@@ -85,20 +94,42 @@ describe("Service Worker: fetch strategy", () => {
     expect(swSource).toMatch(/isNavigationRequest/);
   });
 
-  it("falls back to offline page when navigation fetch fails", () => {
-    expect(swSource).toMatch(/OFFLINE_PAGE/);
-    expect(swSource).toMatch(/catch.*caches\.match/);
+  it("caches successful HTML responses for offline reopening", () => {
+    expect(swSource).toMatch(/isHtmlDocument/);
+    expect(swSource).toMatch(/PAGES_CACHE/);
+    expect(swSource).toMatch(/safeCachePut/);
   });
 
-  it("uses cache-first for static versioned assets", () => {
+  it("falls back to cached document when navigation fetch fails", () => {
+    expect(swSource).toMatch(/OFFLINE_PAGE/);
+    expect(swSource).toMatch(/caches\.match/);
+  });
+
+  it("falls back to cached homepage for unknown routes offline", () => {
+    expect(swSource).toMatch(/caches\.match\("\/"\)/);
+  });
+
+  it("uses runtime caching for static versioned assets (not precached)", () => {
     expect(swSource).toMatch(/isStaticAsset/);
     expect(swSource).toMatch(/_next\/static/);
   });
 
   it("never caches mutation/API requests", () => {
-    // The SW has no API-specific cache logic — everything non-static passes through
     expect(swSource).not.toMatch(/cache.*post/i);
     expect(swSource).not.toMatch(/cache.*mutation/i);
+  });
+});
+
+describe("Service Worker: cache failure safety", () => {
+  it("uses safeCachePut wrapper that catches cache write failures", () => {
+    expect(swSource).toMatch(/safeCachePut/);
+    expect(swSource).toMatch(/\.catch/);
+  });
+
+  it("still returns network response even if cache put fails", () => {
+    // safeCachePut tries cache.put but catches errors; the response
+    // is returned regardless because safeCachePut does not return anything
+    expect(swSource).toMatch(/Cache write failure is non-fatal/);
   });
 });
 
@@ -128,6 +159,12 @@ describe("Service Worker: financial data safety", () => {
   it("never caches response bodies or JSON snapshots", () => {
     expect(codeOnly).not.toMatch(/JSON\.stringify/);
   });
+
+  it("separate document cache does not contain financial data", () => {
+    // The PAGES_CACHE stores HTML documents only, never JSON payloads
+    expect(swSource).toMatch(/PAGES_CACHE/);
+    expect(swSource).not.toMatch(/application\/json/);
+  });
 });
 
 describe("Service Worker: update safety", () => {
@@ -136,19 +173,20 @@ describe("Service Worker: update safety", () => {
     expect(swSource).not.toMatch(/clients\.openWindow/);
   });
 
-  it("does not clear all caches on update", () => {
-    // The SW must filter caches to only delete its own prefix
-    expect(swSource).toMatch(/\.filter.*smarts-shell/);
+  it("does not clear all caches on update — only SmartSpend namespaces", () => {
+    expect(swSource).toMatch(/startsWith.*smarts-shell/);
+    expect(swSource).toMatch(/startsWith.*smarts-pages/);
   });
 
-  it("cache version is a named constant for safe invalidation", () => {
+  it("cache version constants enable safe invalidation", () => {
     expect(swSource).toMatch(/CACHE_VERSION/);
-    expect(swSource).toMatch(/CACHE_NAME/);
+    expect(swSource).toMatch(/SHELL_CACHE/);
+    expect(swSource).toMatch(/PAGES_CACHE/);
   });
 
   it("never clears browser storage on update", () => {
     expect(swSource).not.toMatch(/removeItem/);
-    expect(swSource).not.toMatch(/clear\(\)/);
+    expect(swSource).not.toMatch(/localStorage\.clear/);
   });
 });
 

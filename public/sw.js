@@ -1,38 +1,47 @@
 /**
- * SmartSpend — Service Worker (Phase 2K PWA foundation)
+ * SmartSpend — Service Worker (Phase 2K PWA foundation + offline reopening)
  *
- * Architecture:
- *   - PRECACHED during install: manifest, icons, offline shell page (STATIC_ASSETS + OFFLINE_PAGE)
- *   - RUNTIME-CACHED: Next.js build-output assets under /_next/static/* enter Cache
- *     Storage on first request (cache-first with stale-while-revalidate). These are
- *     immutable, content-hashed files so stale-while-revalidate is safe.
- *   - Navigation / HTML documents: network-first with offline fallback to cached shell
- *   - API/mutation requests: never cached, always pass through
- *   - The browser's local storage (the only financial data store) is NEVER
- *     read or written by this worker. The existing repository abstraction
- *     (src/repository/) in the page is the sole authority for financial data.
+ * Architecture / Rationale
+ * ────────────────────────
+ *   WHY: After one successful online visit, the user must be able to reopen the
+ *   REAL SmartSpend application offline — not just offline.html.
  *
- * Cache names include a version string. Bumping CACHE_VERSION causes the
- * activate handler to delete the old cache — it does NOT clear any user data.
+ *   WHAT IS CACHED:
+ *     1. PRECACHED during install (smarts-shell-* cache):
+ *        - offline.html (last-resort fallback)
+ *        - manifest.webmanifest, all icon PNGs
+ *     2. RUNTIME-CACHED on first successful response:
+ *        - Application HTML documents (smarts-pages-* cache)
+ *        - /_next/static/* JS/CSS/font chunks (smarts-shell-* cache)
+ *        These enter Cache Storage only after a successful network fetch.
  *
- * OFFLINE CAPABILITY (Part 1):
- *   After one successful online visit, the offline shell (manifest, icons,
- *   offline.html) is available offline. However, the full application UI
- *   is NOT available offline because Next.js JS chunks under /_next/static/*
- *   are only cached after they are fetched at least once. If a subsequent
- *   offline visit navigates to a route whose JS chunks were never requested,
- *   the SW will serve offline.html instead. Full app reopening offline
- *   requires Part 2 precache manifest or explicit route precaching.
+ *   WHEN: Documents are cached when navigation succeeds. Static assets are
+ *   cached when fetched and the response is OK.
+ *
+ *   HOW IT UPDATES: Two versioned cache namespaces — smarts-shell-v1 and
+ *   smarts-pages-v1. Bumping a version string causes the activate handler to
+ *   delete only that namespace's old caches. Online navigation is always
+ *   network-first, so a newly deployed build is served immediately and its
+ *   new document is cached, replacing the stale one.
+ *
+ *   WHY IT CANNOT TRAP USERS: Navigation is network-first + offline fallback
+ *   to cached document. A new build's fresh document is always preferred when
+ *   online. The SW never forces a reload — users keep working on the current
+ *   document until they manually refresh.
+ *
+ *   FINANCIAL SAFETY: The SW never reads or writes the browser's local storage
+ *   (the only financial data store). The repository boundary
+ *   (src/repository/) in the page context is the sole authority. No financial
+ *   JSON, localStorage contents, or storage keys are ever placed in Cache Storage.
  */
 
 const CACHE_VERSION = "v1";
-const CACHE_NAME = "smarts-shell-" + CACHE_VERSION;
+const SHELL_CACHE = "smarts-shell-" + CACHE_VERSION;
+const PAGES_CACHE = "smarts-pages-" + CACHE_VERSION;
 const OFFLINE_PAGE = "/offline.html";
 
 /**
- * Static assets safe to cache aggressively. These are pre-cached during
- * install (cache.addAll) so they are immediately available offline after
- * first visit — even before any JS chunk is requested.
+ * Static assets precached during install (manifest, icons, offline shell).
  */
 const STATIC_ASSETS = [
   "/manifest.webmanifest",
@@ -44,30 +53,35 @@ const STATIC_ASSETS = [
 ];
 
 /**
- * Install: pre-cache the offline shell and static assets immediately.
+ * Install: precache the offline shell and static assets immediately.
  */
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
-      .open(CACHE_NAME)
+      .open(SHELL_CACHE)
       .then((cache) => cache.addAll([OFFLINE_PAGE, ...STATIC_ASSETS]))
       .then(() => self.skipWaiting()),
   );
 });
 
 /**
- * Activate: remove old caches on version change. Crucially, this does NOT
- * touch the browser's local storage — financial data lives behind the
- * repository boundary in the page context, not here.
+ * Activate: remove caches from previous versions. Filters to smarts-shell-*
+ * and smarts-pages-* prefixes only — never touches unrelated cache namespaces.
+ * Does NOT touch any stored user data.
  */
 self.addEventListener("activate", (event) => {
+  const currentCaches = [SHELL_CACHE, PAGES_CACHE];
   event.waitUntil(
     caches
       .keys()
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key.startsWith("smarts-shell-") && key !== CACHE_NAME)
+            .filter(
+              (key) =>
+                (key.startsWith("smarts-shell-") || key.startsWith("smarts-pages-")) &&
+                !currentCaches.includes(key),
+            )
             .map((key) => caches.delete(key)),
         ),
       )
@@ -86,12 +100,7 @@ function isNavigationRequest(request) {
 }
 
 /**
- * Determine if a request targets a static asset we can runtime-cache
- * (by extension or /_next/static path prefix).
- *
- * Note: /_next/static/* assets are NOT pre-cached during install. They
- * enter Cache Storage on first request (runtime caching) — safe because
- * they are content-hashed and immutable.
+ * Determine if a request targets a static asset we can runtime-cache.
  */
 function isStaticAsset(request) {
   const url = new URL(request.url);
@@ -100,6 +109,27 @@ function isStaticAsset(request) {
     pathname.startsWith("/_next/static/") ||
     pathname.match(/\.(js|css|woff2?|ttf|eot|png|jpg|jpeg|webp|svg|ico|map)$/i) !== null
   );
+}
+
+/**
+ * Check if a response is a valid HTML document (SmartSpend app shell).
+ */
+function isHtmlDocument(response) {
+  if (!response || !response.ok) return false;
+  const contentType = response.headers.get("content-type") || "";
+  return contentType.includes("text/html");
+}
+
+/**
+ * Safely cache a response. If cache.put() fails, the original response is
+ * still returned — a cache failure must never break a successful request.
+ */
+function safeCachePut(cache, request, response) {
+  try {
+    cache.put(request, response.clone());
+  } catch {
+    // Cache write failure is non-fatal — we still return the network response.
+  }
 }
 
 self.addEventListener("fetch", (event) => {
@@ -116,33 +146,45 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigation requests: network-first with offline fallback.
+  // Navigation requests: network-first with cached-document offline fallback.
   if (isNavigationRequest(request)) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Serve fresh response from network.
+          // Cache successful HTML responses so the app can reopen offline.
+          if (isHtmlDocument(response)) {
+            caches.open(PAGES_CACHE).then((cache) => safeCachePut(cache, request, response));
+          }
           return response;
         })
-        .catch(() => caches.match(OFFLINE_PAGE)),
+        .catch(() =>
+          caches.match(request).then((cachedResponse) => {
+            // Prefer the exact cached document; fall back to cached homepage
+            // for a generic offline navigation to any SmartSpend route.
+            return cachedResponse || caches.match("/");
+          }).then((docResponse) => docResponse || caches.match(OFFLINE_PAGE)),
+        ),
     );
     return;
   }
 
-  // Static versioned assets: runtime cache-first with stale-while-revalidate.
-  // These enter Cache Storage only after the first network request — they
-  // are NOT pre-cached during install (no build-time precache manifest).
+  // Static versioned assets: cache-first with stale-while-revalidate.
+  // /_next/static/* and icon/manifest files enter Cache Storage only after
+  // a successful network request (runtime caching, not precaching).
   if (isStaticAsset(request) || STATIC_ASSETS.some((path) => url.pathname === path)) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        const networkFetch = fetch(request).then((networkResponse) => {
-          if (networkResponse.ok) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, networkResponse.clone()));
-          }
-          return networkResponse;
-        }).catch(() => cachedResponse);
-        return cachedResponse || networkFetch;
-      }),
+      caches
+        .match(request)
+        .then((cachedResponse) => {
+          const networkFetch = fetch(request).then((networkResponse) => {
+            if (networkResponse.ok) {
+              caches.open(SHELL_CACHE).then((cache) => safeCachePut(cache, request, networkResponse));
+            }
+            return networkResponse;
+          }).catch(() => cachedResponse);
+          return cachedResponse || networkFetch;
+        })
+        .catch(() => caches.match(OFFLINE_PAGE)),
     );
     return;
   }
