@@ -1,14 +1,40 @@
 {
   "name": "SmartSpend",
   "short_name": "SmartSpend",
-  "description": "Pencatat keuangan harian (IDR) yang berjalan di perangkat Anda.",
+  "description": "Pencatat keuangan harian (IDR) yang berjalan sepenuhnya di perangkat Anda: dompet, transaksi, tabungan, dan budget.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f6f7fb",
-  "theme_color": "#1d6ff2",
-  "lang": "id",
-  "categories": ["finance", "productivity"]
+  "background_color": "#f5f7f6",
+  "theme_color": "#167e78",
+  "lang": "id-ID",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }

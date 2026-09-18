@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SmartSpend — Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --background: #f5f7f6;
+      --surface: #ffffff;
+      --foreground: #17282d;
+      --muted: #52666b;
+      --border: #d9e3e0;
+      --primary: #167e78;
+    }
+    html, body {
+      height: 100%;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+      overscroll-behavior-y: none;
+      overflow-x: hidden;
+    }
+    .app-shell {
+      width: 100%;
+      max-width: 43rem;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: calc(0.5rem + env(safe-area-inset-top)) calc(0.875rem + env(safe-area-inset-left)) calc(var(--nav-height, 56px) + env(safe-area-inset-bottom) + 1.25rem) calc(0.875rem + env(safe-area-inset-right));
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px;
+      height: 64px;
+      border-radius: 14px;
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+    h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+    p { font-size: 0.875rem; line-height: 1.5; color: var(--muted); max-width: 36ch; margin-bottom: 1.5rem; }
+    button {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      padding: 12px 24px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="icon">S</div>
+    <h1>SmartSpend sedang offline</h1>
+    <p>Anda sedang berada dalam kondisi tidak terhubung. Data keuangan Anda tetap aman dan tersimpan di perangkat ini.</p>
+    <button onclick="window.location.reload()">Coba lagi</button>
+  </div>
+</body>
+</html>

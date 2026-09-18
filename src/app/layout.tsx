@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
 import { BottomNav } from "@/components/nav/bottom-nav";
 import { Toaster } from "@/components/ui/toaster";
+import { SWRegister } from "@/components/sw-register";
 
 export const metadata: Metadata = {
   title: {
@@ -13,6 +14,18 @@ export const metadata: Metadata = {
     "Pencatat keuangan harian (IDR) yang berjalan sepenuhnya di perangkat Anda: dompet, transaksi, tabungan, dan budget.",
   applicationName: "SmartSpend",
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SmartSpend",
+  },
+  icons: {
+    icon: [
+      { rel: "icon", url: "/favicon.ico" },
+      { rel: "icon", url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ rel: "apple-touch-icon", url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -31,6 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="id">
       <body className="min-h-full">
         <div className="app-shell">
+          <SWRegister />
           <AppProviders>
             <main className="app-content">{children}</main>
           </AppProviders>
