@@ -46,7 +46,6 @@ export function SWRegister() {
       } catch (error) {
         // Registration failure is non-fatal — the app works without a SW.
         if (cancelled) return;
-        // eslint-disable-next-line no-console
         console.warn("SmartSpend SW registration failed:", error);
       }
     })();
