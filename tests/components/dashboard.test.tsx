@@ -160,11 +160,14 @@ describe("Dashboard Phase 2B", () => {
     render(<DashboardPage />);
 
     expect(screen.getByText("+Rp1.750.000")).toBeInTheDocument();
-    expect(screen.getByText("surplus")).toBeInTheDocument();
     expect(screen.getByText("Rp2.500.000")).toBeInTheDocument();
     expect(screen.getAllByText("Rp750.000").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("1 transaksi")).toHaveLength(2);
-    expect(screen.getByText(/transfer, tabungan, dan saldo awal dikecualikan/i)).toBeInTheDocument();
+    // Net meaning is written out, so it never depends on colour or the sign alone.
+    expect(screen.getByText(/Selisih: surplus/i)).toBeInTheDocument();
+    // The compact hero keeps the caveat as one short line…
+    expect(screen.getByText(/Transfer, tabungan & saldo awal tidak dihitung/i)).toBeInTheDocument();
+    // …and drops per-type transaction counts from the primary summary (Reports/Budgets keep them).
+    expect(screen.queryByText(/\d+ transaksi/)).not.toBeInTheDocument();
   });
 
   it("shows savings progress from existing derived data", () => {
@@ -293,7 +296,9 @@ describe("Dashboard Phase 2B", () => {
 
     const bridge = screen.getByRole("region", { name: "Pola pengeluaran" });
     expect(within(bridge).getByText(/Belum ada pengeluaran bulan ini/i)).toBeInTheDocument();
-    expect(within(bridge).getByRole("link", { name: /Buka laporan/i })).toHaveAttribute("href", "/reports");
+    // One compact row, and the whole row is the link to /reports.
+    expect(within(bridge).getAllByRole("link")).toHaveLength(1);
+    expect(within(bridge).getByRole("link", { name: /Lihat pola keuanganmu/i })).toHaveAttribute("href", "/reports");
   });
 
   it("summarises several wallets with a route to the money hub", () => {
@@ -317,6 +322,20 @@ describe("Dashboard Phase 2B", () => {
     expect(within(hub).getByRole("link", { name: /2 dompet lain/i })).toHaveAttribute("href", "/wallets");
   });
 
+  it("renders an empty money group as one compact interactive row", () => {
+    setDashboardData(emptyData({ wallets: [makeWallet("cash", { name: "Cash", type: "cash" })] }));
+    render(<DashboardPage />);
+
+    const hub = screen.getByRole("region", { name: "Dompet & Tabungan" });
+    // The empty state is the row itself, so the whole row is the create-route link.
+    const targetRow = within(hub).getByRole("link", { name: /Buat target/i });
+    expect(targetRow).toHaveAttribute("href", "/savings/new");
+    expect(within(targetRow).getByText("Belum ada target tabungan")).toBeInTheDocument();
+    // No loud uppercase group headings and no redundant "+ Target" control remain.
+    expect(within(hub).queryByText("Tabungan")).not.toBeInTheDocument();
+    expect(within(hub).queryByRole("link", { name: /^\+ Target$/ })).not.toBeInTheDocument();
+  });
+
   it("shows the top expense category in the reports bridge", () => {
     setDashboardData(realisticData());
     render(<DashboardPage />);
@@ -324,7 +343,8 @@ describe("Dashboard Phase 2B", () => {
     const bridge = screen.getByRole("region", { name: "Pola pengeluaran" });
     expect(within(bridge).getByText(/Pengeluaran terbesar bulan ini/i)).toBeInTheDocument();
     expect(within(bridge).getByText("Makanan")).toBeInTheDocument();
-    expect(within(bridge).getByRole("link", { name: /Buka laporan/i })).toHaveAttribute("href", "/reports");
+    expect(within(bridge).getAllByRole("link")).toHaveLength(1);
+    expect(within(bridge).getByRole("link", { name: /Lihat pola keuanganmu/i })).toHaveAttribute("href", "/reports");
   });
 
   it("reads total money and this month as one hero overview", () => {

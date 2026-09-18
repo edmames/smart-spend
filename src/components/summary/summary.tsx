@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Eye, EyeOff, Info } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { Card, ICON_SIZE, ICON_STROKE } from "@/components/ui/layout";
 import { cn } from "@/lib/cn";
 import { formatIDR, formatSignedIDR } from "@/domain/money";
@@ -85,7 +85,7 @@ export function TotalMoneyCard({
 
   return (
     <section aria-labelledby="total-money-title" className="total-money-hero overflow-hidden rounded-surface border">
-      <div className="px-4 pb-3 pt-4">
+      <div className="px-4 pb-2.5 pt-3.5">
         <div className="flex items-start justify-between gap-3">
           <h2
             id="total-money-title"
@@ -98,14 +98,14 @@ export function TotalMoneyCard({
             aria-label={eyeLabel}
             aria-pressed={hideBalances}
             onClick={() => updateSettings({ hideBalances: !hideBalances })}
-            className="motion-press -mr-1 -mt-1.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted transition-[transform,color,background-color] duration-instant ease-standard hover:bg-surface/60 hover:text-primary-strong active:bg-surface/80"
+            className="motion-press -mr-1.5 -mt-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted transition-[transform,color,background-color] duration-instant ease-standard hover:bg-surface/60 hover:text-primary-strong active:bg-surface/80"
           >
             <EyeIcon className={ICON_SIZE.md} aria-hidden strokeWidth={ICON_STROKE.ui} />
           </button>
         </div>
 
         <p
-          className="financial-display total-money-hero__amount mt-1 break-words"
+          className="financial-display total-money-hero__amount mt-0.5 break-words"
           aria-label={hideBalances ? "Jumlah total tersembunyi" : undefined}
         >
           {hideBalances ? maskMoney() : formatIDR(total)}
@@ -113,7 +113,7 @@ export function TotalMoneyCard({
 
         {/* Where the total comes from. Kept as separate nodes so each figure is
             its own text node (readable, and maskable one by one). */}
-        <p className="total-money-hero__label mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px]">
+        <p className="total-money-hero__label mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px]">
           <span className="font-semibold">Dompet</span>
           <span className="total-money-hero__value tabular font-bold">
             {hideBalances ? maskMoney() : formatIDR(walletTotal)}
@@ -126,7 +126,7 @@ export function TotalMoneyCard({
         </p>
       </div>
 
-      {children ? <div className="total-money-hero__month border-t px-4 pb-3.5 pt-3">{children}</div> : null}
+      {children ? <div className="total-money-hero__month border-t px-4 pb-3 pt-2.5">{children}</div> : null}
     </section>
   );
 }
@@ -134,6 +134,12 @@ export function TotalMoneyCard({
 /**
  * This month as ONE compact data strip, rendered inside the hero (as
  * `TotalMoneyCard` children) so the month never becomes a second, unrelated card.
+ *
+ * The strip is deliberately reduced to what the Dashboard has to answer: label +
+ * figure for income, expense and the difference. Per-type transaction counts were
+ * dropped from the hero because they competed with the figures at phone density;
+ * they remain on Reports and Budgets. The exclusion caveat is one short line of
+ * secondary microcopy — no tooltip, no dialog.
  *
  * The figures come from `calculateMonthlySummary` untouched, so transfers,
  * savings movements and opening balances stay excluded. The difference carries an
@@ -156,33 +162,30 @@ export function MonthlySummaryStrip({ summary, monthKey }: { summary: MonthlySum
         ) : null}
       </div>
 
-      <dl className="mt-2.5 grid grid-cols-3 gap-x-3">
+      <dl className="mt-1.5 grid grid-cols-3 gap-x-3">
         <div className="min-w-0">
-          <dt className="total-money-hero__label metadata font-semibold">Pemasukan</dt>
+          <dt className="total-money-hero__label metadata">Pemasukan</dt>
           <dd className="mt-0.5 break-words text-[13px] font-extrabold tabular tracking-[-0.01em] text-income">
             {money(summary.income)}
           </dd>
-          <dd className="metadata mt-0.5">{summary.incomeCount} transaksi</dd>
         </div>
         <div className="min-w-0">
-          <dt className="total-money-hero__label metadata font-semibold">Pengeluaran</dt>
+          <dt className="total-money-hero__label metadata">Pengeluaran</dt>
           <dd className="mt-0.5 break-words text-[13px] font-extrabold tabular tracking-[-0.01em] text-expense">
             {money(summary.expense)}
           </dd>
-          <dd className="metadata mt-0.5">{summary.expenseCount} transaksi</dd>
         </div>
         <div className="min-w-0">
-          <dt className="total-money-hero__label metadata font-semibold">Selisih</dt>
+          <dt className="total-money-hero__label metadata">Selisih</dt>
           <dd className={cn("mt-0.5 break-words text-[13px] font-extrabold tabular tracking-[-0.01em]", netTone)}>
             {hideBalances ? maskMoney() : signedNet(net)}
           </dd>
-          <dd className="metadata mt-0.5">{netWord}</dd>
         </div>
       </dl>
 
-      <p className="total-money-hero__label mt-2.5 flex items-start gap-1.5 text-[11px] leading-relaxed">
-        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-        Hanya pemasukan &amp; pengeluaran nyata — transfer, tabungan, dan saldo awal dikecualikan.
+      {/* Net meaning is written out, so the sign and the tone never carry it alone. */}
+      <p className="total-money-hero__label mt-1.5 text-[11px] leading-snug">
+        Hanya pemasukan &amp; pengeluaran nyata. Transfer, tabungan &amp; saldo awal tidak dihitung · Selisih: {netWord}.
       </p>
     </>
   );

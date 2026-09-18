@@ -58,24 +58,34 @@ import { cn } from "@/lib/cn";
  * colour transitions on rows). No entrance animation, no count-up, no stagger.
  */
 
-/** Rows inside a grouped surface: colour-only feedback, never a card per row. */
+/** Rows inside a grouped surface: colour-only feedback, never a card per row.
+ *  `min-h-11` keeps the whole FinancialRow a >=44px target at the compact
+ *  padding used below (the visible content is what grows the row). */
 const ROW =
-  "flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-[background-color] duration-quick ease-standard hover:bg-elevated/60 active:bg-elevated";
+  "flex min-h-11 w-full items-center gap-2.5 px-3.5 py-1.5 text-left transition-[background-color] duration-quick ease-standard hover:bg-elevated/60 active:bg-elevated";
 /** Trailing "n more" row — a link, but not a financial record. */
 const ROW_MORE =
-  "flex w-full items-center gap-3 px-3.5 py-2 text-[12px] font-semibold text-brand transition-[background-color] duration-quick ease-standard hover:bg-elevated/60 active:bg-elevated";
-/** Soft circular icon treatment shared by money rows and the transaction feed.
- *  Size is always passed explicitly (`h-9 w-9` rows, `h-11 w-11` quick actions)
- *  because `cn` is a plain joiner — it never de-duplicates conflicting utilities. */
+  "flex min-h-11 w-full items-center gap-3 px-3.5 py-1.5 text-[12px] font-semibold text-brand transition-[background-color] duration-quick ease-standard hover:bg-elevated/60 active:bg-elevated";
+/** Soft circular icon treatment shared by money rows, the feed and quick actions.
+ *  Sizes (rows `h-8 w-8`, quick actions `h-11 w-11`, empty rows `h-9 w-9`) are
+ *  passed explicitly because `cn` is a plain joiner — it never de-duplicates
+ *  conflicting utilities. */
 const ICON_CHIP = "inline-flex shrink-0 items-center justify-center rounded-full";
-/** Contextual section link, used at the same weight everywhere. */
+/** Contextual section/row link, used at the same weight everywhere. */
 const SECTION_LINK = "text-[12px] font-semibold text-brand hover:underline";
+/** Dashboard-scoped hairlines: softer than the global `border-line` so only the
+ *  hero reads as a strong frame and grouping otherwise comes from surface
+ *  contrast. Token-derived (`border-line/…`, `divide-line/…`), never a hex, and
+ *  explicitly coloured because Tailwind's `divide-y` only sets border *width* —
+ *  an uncoloured divider would fall back to `currentColor` (near-black ink). */
+const HAIRLINE = "border-line/60";
+const DIVIDER = "divide-line/60";
 
 export default function DashboardPage() {
   return (
     <>
       <DashboardHeader />
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-5">
         <HydrationGate fallback={<DashboardSkeleton />}>
           <DashboardBody />
         </HydrationGate>
@@ -147,8 +157,8 @@ function DashboardBody() {
 
       <ReportsBridge topExpense={derived.expenseBreakdown[0]} />
 
-      <p className="metadata px-1 text-center">
-        Data disimpan di browser/perangkat ini dan belum tersinkron antarperangkat.{" "}
+      <p className="mt-1 px-1 text-center text-[11px] leading-snug text-subtle">
+        Data tersimpan lokal di perangkat ini.{" "}
         <Link href="/settings" className="font-semibold text-brand hover:underline">
           Ekspor cadangan
         </Link>
@@ -159,7 +169,7 @@ function DashboardBody() {
 
 function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
+    <div className="flex flex-col gap-5" role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">Memuat ringkasan keuangan...</span>
 
       <div className="total-money-hero overflow-hidden rounded-surface border" aria-hidden>
@@ -240,7 +250,7 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="motion-press group flex min-h-[4.5rem] min-w-0 flex-col items-center gap-1.5 rounded-control px-1 py-1.5 text-center transition-[background-color] duration-quick ease-standard hover:bg-elevated/50 active:bg-elevated"
+      className="motion-press group flex min-h-[4.25rem] min-w-0 flex-col items-center gap-1 rounded-control px-1 py-1 text-center transition-[background-color] duration-quick ease-standard hover:bg-elevated/50 active:bg-elevated"
     >
       <span
         className={cn(
@@ -253,7 +263,12 @@ function QuickAction({
       >
         <Icon className={ICON_SIZE.md} aria-hidden strokeWidth={ICON_STROKE.ui} />
       </span>
-      <span className={cn("w-full text-[11px] font-semibold leading-tight", primary ? "text-ink" : "text-muted group-hover:text-ink")}>
+      <span
+        className={cn(
+          "w-full text-[11px] font-semibold leading-[1.15] tracking-[-0.01em]",
+          primary ? "text-ink" : "text-muted group-hover:text-ink",
+        )}
+      >
         {label}
       </span>
     </Link>
@@ -296,23 +311,27 @@ function MoneyHubSection({
       </SectionTitle>
 
       <Card padded={false} className="overflow-hidden">
-        <GroupLabel label="Dompet" actionHref={wallets.length > 0 ? "/wallets/new" : undefined} actionLabel="Tambah" />
         {wallets.length === 0 ? (
-          <HubEmptyRow text="Belum ada dompet aktif." actionHref="/wallets/new" actionLabel="Buat dompet" />
+          <HubEmptyRow
+            icon={Wallet}
+            text="Belum ada dompet aktif"
+            actionHref="/wallets/new"
+            actionLabel="Buat dompet"
+          />
         ) : (
-          <ul className="divide-y divide-line/70">
+          <ul className={cn("divide-y", DIVIDER)}>
             {wallets.map((row) => (
               <li key={row.wallet.id}>
                 <Link href={`/wallets/${row.wallet.id}`} className={ROW}>
-                  <span className={cn(ICON_CHIP, "h-9 w-9 bg-brand-soft text-brand-strong")}>
+                  <span className={cn(ICON_CHIP, "h-8 w-8 bg-brand-soft text-brand-strong")}>
                     <Wallet className="h-[18px] w-[18px]" aria-hidden strokeWidth={ICON_STROKE.ui} />
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="flex min-w-0 flex-1 flex-col">
                     <span className="flex min-w-0 items-baseline justify-between gap-2">
                       <span className="truncate text-[13.5px] font-semibold text-ink">{row.wallet.name}</span>
                       <span className="shrink-0 text-[13.5px] font-bold tabular text-ink">{money(row.balance)}</span>
                     </span>
-                    <span className="metadata truncate">{WALLET_TYPE_LABELS[row.wallet.type]}</span>
+                    <span className="metadata truncate leading-tight">{WALLET_TYPE_LABELS[row.wallet.type]}</span>
                   </span>
                   <ChevronRight className={cn(ICON_SIZE.sm, "shrink-0 text-subtle")} aria-hidden />
                 </Link>
@@ -328,23 +347,23 @@ function MoneyHubSection({
           </ul>
         )}
 
-        <GroupLabel
-          label="Tabungan"
-          actionHref={savings.length > 0 ? "/savings/new" : undefined}
-          actionLabel="Target"
-          className="border-t border-line"
-        />
         {savings.length === 0 ? (
-          <HubEmptyRow text="Belum ada target tabungan." actionHref="/savings/new" actionLabel="Buat target" />
+          <HubEmptyRow
+            icon={PiggyBank}
+            className={cn("border-t", HAIRLINE)}
+            text="Belum ada target tabungan"
+            actionHref="/savings/new"
+            actionLabel="Buat target"
+          />
         ) : (
-          <ul className="divide-y divide-line/70">
+          <ul className={cn("border-t divide-y", HAIRLINE, DIVIDER)}>
             {savings.map((progress) => (
               <li key={progress.target.id}>
                 <Link href={`/savings/${progress.target.id}`} className={ROW}>
-                  <span className={cn(ICON_CHIP, "h-9 w-9 bg-savings-soft text-savings")}>
+                  <span className={cn(ICON_CHIP, "h-8 w-8 bg-savings-soft text-savings")}>
                     <PiggyBank className="h-[18px] w-[18px]" aria-hidden strokeWidth={ICON_STROKE.ui} />
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className="flex min-w-0 items-baseline justify-between gap-2">
                       <span className="truncate text-[13.5px] font-semibold text-ink">{progress.target.name}</span>
                       <span className="shrink-0 text-[13.5px] font-bold tabular text-ink">{money(progress.saved)}</span>
@@ -360,8 +379,8 @@ function MoneyHubSection({
                         {progress.percentCapped.toFixed(0)}%
                       </span>
                     </span>
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="metadata">Target {money(progress.targetAmount)}</span>
+                    <span className="flex flex-wrap items-center gap-1.5 leading-tight">
+                      <span className="metadata leading-tight">Target {money(progress.targetAmount)}</span>
                       {progress.goalReached ? <Badge tone="income">tercapai</Badge> : null}
                     </span>
                   </span>
@@ -383,38 +402,36 @@ function MoneyHubSection({
   );
 }
 
-/** Group label inside the money-hub surface — typography, not another band. */
-function GroupLabel({
-  label,
-  actionHref,
+function HubEmptyRow({
+  icon: Icon,
+  text,
   actionLabel,
+  actionHref,
   className,
 }: {
-  label: string;
-  actionHref?: string;
+  icon: LucideIcon;
+  text: string;
   actionLabel: string;
+  actionHref: string;
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center justify-between gap-2 px-3.5 pb-1 pt-3", className)}>
-      <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle">{label}</span>
-      {actionHref ? (
-        <Link href={actionHref} className={SECTION_LINK}>
-          + {actionLabel}
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-function HubEmptyRow({ text, actionHref, actionLabel }: { text: string; actionHref: string; actionLabel: string }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 pb-3">
-      <span className="small-copy text-muted">{text}</span>
-      <Link href={actionHref} className={SECTION_LINK}>
-        + {actionLabel}
-      </Link>
-    </div>
+    <Link
+      href={actionHref}
+      className={cn(
+        "motion-press flex min-h-11 w-full items-center gap-2.5 px-3.5 py-1.5 transition-[background-color] duration-quick ease-standard hover:bg-elevated/60 active:bg-elevated",
+        className,
+      )}
+    >
+      <span className={cn(ICON_CHIP, "h-9 w-9 border border-dashed", HAIRLINE, "text-muted")}>
+        <Icon className="h-[18px] w-[18px]" aria-hidden strokeWidth={ICON_STROKE.ui} />
+      </span>
+      <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
+        <span className="truncate text-[13px] text-muted">{text}</span>
+        <span className="shrink-0 text-[12px] font-semibold text-brand">{actionLabel}</span>
+      </span>
+      <ChevronRight className={cn(ICON_SIZE.sm, "shrink-0 text-subtle")} aria-hidden />
+    </Link>
   );
 }
 
@@ -451,7 +468,7 @@ function RecentTransactions({ items }: { items: ReturnType<typeof useDerived>["t
         </Card>
       ) : (
         <Card padded={false} className="overflow-hidden">
-          <ul className="divide-y divide-line/70">
+          <ul className={cn("divide-y", DIVIDER)}>
             {items.map((transaction) => (
               <DashboardTransactionRow key={transaction.id} transaction={transaction} href={`/transactions/${transaction.id}`} />
             ))}
@@ -497,7 +514,7 @@ function DashboardTransactionRow({ transaction, href }: { transaction: Transacti
   return (
     <li>
       <Link href={href} className={ROW}>
-        <span className={cn(ICON_CHIP, "h-9 w-9", tone.chip)}>
+        <span className={cn(ICON_CHIP, "h-8 w-8", tone.chip)}>
           <TransactionIcon transaction={transaction} className={cn("h-[18px] w-[18px]", tone.icon)} />
         </span>
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -514,7 +531,7 @@ function DashboardTransactionRow({ transaction, href }: { transaction: Transacti
               {amount}
             </span>
           </span>
-          <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted">
+          <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] leading-tight text-muted">
             <Badge tone={tone.badge} className="shrink-0">
               {TRANSACTION_TYPE_LABELS[transaction.type]}
             </Badge>
@@ -544,41 +561,38 @@ function ReportsBridge({ topExpense }: { topExpense?: CategoryBreakdownEntry }) 
   const hideBalances = useHideBalances();
 
   return (
-    <section aria-labelledby="reports-bridge-title">
+    <section aria-labelledby="reports-bridge-title" className="mt-1">
       {/* Keeps the region's accessible name stable ("Pola pengeluaran") while the
           visible title states the user benefit, as the reference does. */}
       <h2 id="reports-bridge-title" className="sr-only">
         Pola pengeluaran
       </h2>
+      {/* One compact contextual row: the whole surface is the single link to
+          /reports, with one trailing chevron and no internal divider or footer. */}
       <Link
         href="/reports"
-        className="motion-press flex flex-col gap-2.5 rounded-surface border border-line bg-brand-soft/45 p-3.5 transition-[background-color,border-color] duration-quick ease-standard hover:border-primary/40 hover:bg-brand-soft/70 active:bg-brand-soft"
+        className="motion-press flex min-h-11 items-center gap-3 px-1 py-1 transition-[background-color] duration-quick ease-standard hover:bg-elevated/50 active:bg-elevated/70"
       >
-        <span className="flex items-start gap-3">
-          <span className={cn(ICON_CHIP, "h-9 w-9 bg-brand-soft text-brand-strong")}>
-            <ChartPie className="h-[18px] w-[18px]" aria-hidden strokeWidth={ICON_STROKE.ui} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="card-title block text-ink">Lihat pola keuanganmu</span>
-            <span className="small-copy mt-0.5 block text-muted">
-              {topExpense ? (
-                <>
-                  Pengeluaran terbesar bulan ini:{" "}
-                  <strong className="font-semibold text-ink">
-                    {categoryLabel(topExpense.categoryId, "Tanpa kategori", categories)}
-                  </strong>{" "}
-                  {hideBalances ? maskMoney() : formatIDR(topExpense.amount)}.
-                </>
-              ) : (
-                "Belum ada pengeluaran bulan ini."
-              )}
-            </span>
+        <span className={cn(ICON_CHIP, "h-9 w-9 bg-brand-soft text-brand-strong")}>
+          <ChartPie className="h-[18px] w-[18px]" aria-hidden strokeWidth={ICON_STROKE.ui} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13.5px] font-semibold text-ink">Lihat pola keuanganmu</span>
+          <span className="small-copy block text-muted">
+            {topExpense ? (
+              <>
+                Pengeluaran terbesar bulan ini:{" "}
+                <strong className="font-semibold text-ink">
+                  {categoryLabel(topExpense.categoryId, "Tanpa kategori", categories)}
+                </strong>{" "}
+                {hideBalances ? maskMoney() : formatIDR(topExpense.amount)}.
+              </>
+            ) : (
+              "Belum ada pengeluaran bulan ini."
+            )}
           </span>
         </span>
-        <span className="flex items-center justify-between gap-2 border-t border-line/70 pt-2 text-[12px] font-semibold text-brand">
-          <span>Buka laporan</span>
-          <ChevronRight className={ICON_SIZE.sm} aria-hidden />
-        </span>
+        <ChevronRight className={cn(ICON_SIZE.md, "shrink-0 text-subtle")} aria-hidden />
       </Link>
     </section>
   );

@@ -308,14 +308,15 @@ body {
 .total-money-hero__label { color: var(--muted); }
 
 /* Dashboard hero amount — the single dominant figure on Beranda, deliberately
- * larger than the shared `.financial-display`. The viewport-relative clamp keeps
+ * larger than the shared `.financial-display` but tuned for a phone: premium
+ * financial hero, not billboard type. The viewport-relative clamp keeps
  * `Rp9.999.999.999` (15 glyphs) inside the hero down to 375px, and the figures
  * stay tabular so nothing jitters as the value changes. Type only: no new
  * colour and no decoration, so both themes inherit it through the tokens. */
 .total-money-hero__amount {
-  font-size: clamp(2rem, 9vw, 2.5rem);
+  font-size: clamp(2.05rem, 8.6vw, 2.3rem);
   font-weight: 780;
-  line-height: 1.08;
+  line-height: 1.06;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
 }
