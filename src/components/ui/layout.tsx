@@ -315,7 +315,7 @@ export function Badge({
     income: "bg-income-soft text-income",
     expense: "bg-expense-soft text-expense",
     savings: "bg-savings-soft text-savings",
-    brand: "bg-brand-soft text-brand-strong",
+    brand: "bg-primary-soft text-primary-strong",
     warning: "bg-warning-soft text-warning",
   } as const;
   return (
