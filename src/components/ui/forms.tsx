@@ -30,22 +30,30 @@ export function Field({ label, hint, error, htmlFor, optional, children, classNa
   const describedById = useId();
   const errorDescId = error ? `${describedById}-error` : undefined;
   const hintDescId = hint && !error ? `${describedById}-hint` : undefined;
-  const describedBy = [errorDescId, hintDescId].filter(Boolean).join(" ") || undefined;
-  const child = React.Children.only(children);
-  const enhanced =
-    React.isValidElement<{ "aria-describedby"?: string }>(child) &&
-    typeof child.props === "object" &&
-    child.props !== null &&
-    !("aria-describedby" in child.props)
-      ? React.cloneElement(child as React.ReactElement<Record<string, unknown>>, { "aria-describedby": describedBy })
-      : child;
+  const generatedIds = [errorDescId, hintDescId].filter(Boolean);
+
+  // Merge generated error/hint IDs with any existing aria-describedby on the child,
+  // so a child's own describedby refs are preserved and never duplicated.
+  const renderedChildren =
+    React.isValidElement<{ "aria-describedby"?: string }>(children) &&
+    typeof children.props === "object" &&
+    children.props !== null
+      ? (() => {
+          const existing = children.props["aria-describedby"];
+          const existingIds = existing ? existing.split(" ").filter(Boolean) : [];
+          const merged = [...new Set([...existingIds, ...generatedIds])].join(" ") || undefined;
+          if (merged === existing) return children;
+          return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, { "aria-describedby": merged });
+        })()
+      : children;
+
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <label htmlFor={htmlFor} className="flex items-baseline justify-between gap-2 text-sm font-medium text-ink">
         <span>{label}</span>
         {optional ? <span className="text-xs font-normal text-muted">opsional</span> : null}
       </label>
-      {enhanced}
+      {renderedChildren}
       {hint && !error ? <p id={hintDescId} className="text-xs text-muted">{hint}</p> : null}
       {error ? (
         <p id={errorDescId} role="alert" className="text-xs font-medium text-danger">
@@ -246,10 +254,11 @@ export function Segmented<T extends string>({
   columns?: 2 | 3 | 5;
 }) {
   const gridCols = columns === 2 ? "grid-cols-2" : columns === 5 ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-3";
+  const labelId = React.useId();
   return (
     <div className="flex flex-col gap-1.5">
-      {label ? <span className="text-sm font-medium text-ink">{label}</span> : null}
-      <div role="group" aria-label={label} className={cn("grid gap-1.5", gridCols)}>
+      {label ? <span id={labelId} className="text-sm font-medium text-ink">{label}</span> : null}
+      <div role="group" aria-labelledby={label ? labelId : undefined} className={cn("grid gap-1.5", gridCols)}>
         {options.map((option) => {
           const active = option.value === value;
           return (
