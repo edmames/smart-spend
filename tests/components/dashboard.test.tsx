@@ -326,4 +326,70 @@ describe("Dashboard Phase 2B", () => {
     expect(within(bridge).getByText("Makanan")).toBeInTheDocument();
     expect(within(bridge).getByRole("link", { name: /Buka laporan/i })).toHaveAttribute("href", "/reports");
   });
+
+  it("reads total money and this month as one hero overview", () => {
+    setDashboardData(realisticData());
+    render(<DashboardPage />);
+
+    const hero = screen.getByText("Total uang Anda").closest("section");
+    expect(hero).not.toBeNull();
+    expect(hero).toHaveClass("total-money-hero");
+    // The monthly strip lives inside the same surface — one overview, not two cards.
+    expect(within(hero!).getByRole("heading", { name: "Bulan ini" })).toBeInTheDocument();
+    expect(within(hero!).getByText("September 2026")).toBeInTheDocument();
+    expect(within(hero!).getByText("+Rp1.750.000")).toBeInTheDocument();
+    // The derivation of the total stays visible next to the headline figure.
+    expect(within(hero!).getByText("Rp11.450.000")).toBeInTheDocument();
+    expect(within(hero!).getByText("Rp800.000")).toBeInTheDocument();
+  });
+
+  it("never signs a transfer or a savings movement as income or expense in the feed", () => {
+    setDashboardData(realisticData());
+    render(<DashboardPage />);
+
+    const recent = screen.getByRole("region", { name: "Transaksi terakhir" });
+    // A real expense keeps its expense sign…
+    expect(within(recent).getByText("-Rp750.000")).toBeInTheDocument();
+    // …while an internal movement is shown unsigned, with its own type badge.
+    expect(within(recent).getByText("Rp500.000")).toBeInTheDocument();
+    expect(within(recent).queryByText("+Rp500.000")).not.toBeInTheDocument();
+    expect(within(recent).queryByText("-Rp500.000")).not.toBeInTheDocument();
+    expect(within(recent).getByText("Rp1.000.000")).toBeInTheDocument();
+    expect(within(recent).queryByText("+Rp1.000.000")).not.toBeInTheDocument();
+  });
+
+  it("never signs an opening balance as income in the feed", () => {
+    setDashboardData(
+      emptyData({
+        wallets: [makeWallet("bca", { name: "BCA" })],
+        transactions: [
+          makeTx({
+            id: "open-bca",
+            type: "opening_balance",
+            amount: 3_000_000,
+            destinationWalletId: "bca",
+            date: on(2026, 9, 1),
+            createdAt: at(2026, 9, 1, 8),
+          }),
+        ],
+      }),
+    );
+    render(<DashboardPage />);
+
+    const recent = screen.getByRole("region", { name: "Transaksi terakhir" });
+    expect(within(recent).getByText("Rp3.000.000")).toBeInTheDocument();
+    expect(within(recent).queryByText("+Rp3.000.000")).not.toBeInTheDocument();
+    expect(within(recent).getAllByText("Saldo Awal").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("keeps the recent feed masked while balances are hidden", () => {
+    setDashboardData(realisticData());
+    useSmartSpendStore.getState().updateSettings({ hideBalances: true });
+    render(<DashboardPage />);
+
+    const recent = screen.getByRole("region", { name: "Transaksi terakhir" });
+    expect(within(recent).queryByText("Rp500.000")).not.toBeInTheDocument();
+    expect(within(recent).queryByText("-Rp750.000")).not.toBeInTheDocument();
+    expect(within(recent).getAllByText(maskMoney()).length).toBeGreaterThanOrEqual(4);
+  });
 });

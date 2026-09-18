@@ -4,7 +4,10 @@ import Link from "next/link";
 import {
   ArrowLeftRight,
   BarChart3,
+  ChartPie,
+  ChevronRight,
   Database,
+  PiggyBank,
   Plus,
   Receipt,
   Settings,
@@ -23,13 +26,18 @@ import {
   SkeletonBlock,
 } from "@/components/ui/layout";
 import { HydrationGate } from "@/components/ui/hydration-gate";
-import { CashFlowCard, TotalMoneyCard } from "@/components/summary/summary";
-import { TransactionRow } from "@/components/transactions/transaction-row";
+import { MonthlySummaryStrip, TotalMoneyCard } from "@/components/summary/summary";
+import {
+  TransactionIcon,
+  describeTransaction,
+  formatTransactionDate,
+  useDescribeContext,
+} from "@/components/transactions/transaction-row";
 import { useDerived } from "@/app/derived";
 import { useSmartSpendStore } from "@/app/store";
-import { categoryLabel } from "@/domain/categories";
-import { formatIDR } from "@/domain/money";
-import { WALLET_TYPE_LABELS } from "@/domain/models";
+import { TRANSACTION_TYPE_LABELS, categoryLabel, getCategoryMeta } from "@/domain/categories";
+import { formatIDR, formatSignedIDR } from "@/domain/money";
+import { WALLET_TYPE_LABELS, type Transaction } from "@/domain/models";
 import { maskMoney, useHideBalances } from "@/components/settings/money-mask";
 import type { CategoryBreakdownEntry } from "@/domain/selectors";
 import { cn } from "@/lib/cn";
@@ -38,28 +46,29 @@ import { cn } from "@/lib/cn";
  * Beranda — the Dashboard experience.
  *
  * It answers one question: "Gimana kondisi uang gue sekarang?" The read order is
- * deliberate and must stay this way — identity → total money → this month →
+ * deliberate and must stay this way — identity → total money *with* this month →
  * quick actions → Dompet & Tabungan → recent ledger → reports bridge.
  *
  * Every figure on this screen is derived (`useDerived` → domain selectors): the
  * ledger stays the single source of truth and nothing is cached or recomputed in
- * a component. Surfaces stay deliberately few — a section is separated from the
- * next one by whitespace and typography, not by wrapping it in another card.
+ * a component. Surfaces are grouped on purpose (hero, money hub, recent feed,
+ * reports bridge) but never nested and never one-card-per-metric.
  *
  * Motion comes from the shared primitives only (press feedback on controls,
  * colour transitions on rows). No entrance animation, no count-up, no stagger.
  */
 
-/** Rows that open a financial record: full-bleed hover, colour-only motion.
- *  Variants are spelled out (no overrides) because `cn` is a plain joiner. */
-const ROW_BASE =
-  "flex w-full px-3 py-2.5 text-left transition-[background-color,color] duration-quick ease-standard hover:bg-elevated active:bg-elevated/80";
-const ROW_LINK = `${ROW_BASE} items-center justify-between gap-3`;
-const ROW_STACK = `${ROW_BASE} flex-col items-stretch gap-1.5`;
+/** Rows inside a grouped surface: colour-only feedback, never a card per row. */
+const ROW =
+  "flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-[background-color] duration-quick ease-standard hover:bg-elevated/60 active:bg-elevated";
 /** Trailing "n more" row — a link, but not a financial record. */
-const ROW_MORE = `${ROW_BASE} items-center text-[12px] font-semibold text-brand`;
-
-/** Contextual section/header link, used at the same weight everywhere. */
+const ROW_MORE =
+  "flex w-full items-center gap-3 px-3.5 py-2 text-[12px] font-semibold text-brand transition-[background-color] duration-quick ease-standard hover:bg-elevated/60 active:bg-elevated";
+/** Soft circular icon treatment shared by money rows and the transaction feed.
+ *  Size is always passed explicitly (`h-9 w-9` rows, `h-11 w-11` quick actions)
+ *  because `cn` is a plain joiner — it never de-duplicates conflicting utilities. */
+const ICON_CHIP = "inline-flex shrink-0 items-center justify-center rounded-full";
+/** Contextual section link, used at the same weight everywhere. */
 const SECTION_LINK = "text-[12px] font-semibold text-brand hover:underline";
 
 export default function DashboardPage() {
@@ -76,16 +85,22 @@ export default function DashboardPage() {
 }
 
 /**
- * Lightweight identity header: no card, no invented user name, no clock — so it
- * can render before hydration without risking a wrong value.
+ * Identity header — auth-ready, not fake auth.
+ *
+ * V1 is local-first and has no account, so the greeting stays neutral: no
+ * invented name, no avatar, no profile data. The layout already reserves the
+ * identity block (greeting + supporting line) and the trailing control slot, so
+ * Phase 3B can supply a display name/avatar inside `header` without redesigning
+ * the Dashboard — and without a speculative abstraction existing today.
  */
 function DashboardHeader() {
   return (
     <header className="mb-5 flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-brand">SmartSpend</p>
-        <h1 className="page-title mt-0.5 text-ink">Kondisi uang Anda</h1>
-        <p className="small-copy mt-1 text-muted">Semua angka dihitung dari catatan transaksi Anda.</p>
+        <h1 className="page-title text-ink">
+          Selamat datang <span aria-hidden>👋</span>
+        </h1>
+        <p className="small-copy mt-1 text-muted">Ringkasan keuanganmu hari ini.</p>
       </div>
       <Link
         href="/settings"
@@ -115,11 +130,11 @@ function DashboardBody() {
         total={derived.totalMoney.total}
         walletTotal={derived.totalMoney.walletTotal}
         savingsTotal={derived.totalMoney.savingsTotal}
-      />
+      >
+        <MonthlySummaryStrip summary={derived.monthly} monthKey={derived.monthKey} />
+      </TotalMoneyCard>
 
       <QuickActions />
-
-      <CashFlowCard summary={derived.monthly} monthKey={derived.monthKey} />
 
       <MoneyHubSection
         wallets={wallets}
@@ -147,43 +162,63 @@ function DashboardSkeleton() {
     <div className="flex flex-col gap-6" role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">Memuat ringkasan keuangan...</span>
 
-      <div className="flex flex-col gap-3 rounded-surface border border-line bg-surface px-4 pb-4 pt-4" aria-hidden>
-        <SkeletonBlock className="h-3 w-28" />
-        <SkeletonBlock className="h-8 w-48" />
-        <div className="grid grid-cols-2 gap-2">
-          <SkeletonBlock className="h-10" />
-          <SkeletonBlock className="h-10" />
+      <div className="total-money-hero overflow-hidden rounded-surface border" aria-hidden>
+        <div className="px-4 pb-3 pt-4">
+          <SkeletonBlock className="h-3 w-24" />
+          <SkeletonBlock className="mt-3 h-9 w-52" />
+          <SkeletonBlock className="mt-2 h-3 w-40" />
+        </div>
+        <div className="total-money-hero__month border-t px-4 pb-3.5 pt-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <SkeletonBlock className="h-3 w-16" />
+            <SkeletonBlock className="h-3 w-24" />
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-x-3">
+            <SkeletonBlock className="h-8" />
+            <SkeletonBlock className="h-8" />
+            <SkeletonBlock className="h-8" />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2" aria-hidden>
-        <SkeletonBlock className="h-11" />
-        <SkeletonBlock className="h-11" />
-        <SkeletonBlock className="h-11" />
-        <SkeletonBlock className="h-11" />
-      </div>
-
-      <div className="flex flex-col gap-2" aria-hidden>
-        <SkeletonBlock className="h-4 w-24" />
-        <SkeletonBlock className="h-16" />
+      <div className="grid grid-cols-4 gap-2" aria-hidden>
+        {[0, 1, 2, 3].map((index) => (
+          <div key={index} className="flex flex-col items-center gap-1.5">
+            <SkeletonBlock className="h-11 w-11 rounded-full" />
+            <SkeletonBlock className="h-3 w-12" />
+          </div>
+        ))}
       </div>
 
       <div className="flex flex-col gap-2" aria-hidden>
         <SkeletonBlock className="h-4 w-40" />
-        <SkeletonBlock className="h-40" />
+        <div className="flex flex-col gap-3 rounded-surface border border-line bg-surface px-3.5 py-3">
+          <SkeletonBlock className="h-9" />
+          <SkeletonBlock className="h-9" />
+          <SkeletonBlock className="h-9" />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2" aria-hidden>
+        <SkeletonBlock className="h-4 w-32" />
+        <div className="flex flex-col gap-3 rounded-surface border border-line bg-surface px-3.5 py-3">
+          <SkeletonBlock className="h-9" />
+          <SkeletonBlock className="h-9" />
+        </div>
       </div>
     </div>
   );
 }
 
 /**
- * Four destinations, not four big cards. `Tambah Transaksi` is the only green
- * control on the screen — the rest stay secondary so the accent keeps meaning.
+ * Four destinations, not four big cards: an icon-first row where `Tambah
+ * Transaksi` is the only green control on the screen. The other three stay
+ * restrained and neutral so the accent keeps meaning.
  */
 function QuickActions() {
   return (
-    <section aria-label="Aksi cepat" className="grid grid-cols-2 gap-2">
-      <QuickAction href="/transactions/new" icon={Plus} label="Tambah Transaksi" variant="primary" />
+    <section aria-label="Aksi cepat" className="grid grid-cols-4 gap-2">
+      <QuickAction href="/transactions/new" icon={Plus} label="Tambah Transaksi" primary />
       <QuickAction href="/transactions/new?kind=transfer" icon={ArrowLeftRight} label="Transfer" />
       <QuickAction href="/wallets" icon={Wallet} label="Kelola Dompet" />
       <QuickAction href="/reports" icon={BarChart3} label="Lihat Laporan" />
@@ -195,27 +230,43 @@ function QuickAction({
   href,
   icon: Icon,
   label,
-  variant = "secondary",
+  primary = false,
 }: {
   href: string;
   icon: LucideIcon;
   label: string;
-  variant?: "primary" | "secondary";
+  primary?: boolean;
 }) {
   return (
-    <LinkButton href={href} variant={variant} size="sm" className="justify-start gap-2 px-3">
-      <Icon className={ICON_SIZE.sm} aria-hidden strokeWidth={ICON_STROKE.ui} />
-      <span className="truncate">{label}</span>
-    </LinkButton>
+    <Link
+      href={href}
+      className="motion-press group flex min-h-[4.5rem] min-w-0 flex-col items-center gap-1.5 rounded-control px-1 py-1.5 text-center transition-[background-color] duration-quick ease-standard hover:bg-elevated/50 active:bg-elevated"
+    >
+      <span
+        className={cn(
+          ICON_CHIP,
+          "h-11 w-11 shrink-0 transition-[color,background-color,border-color] duration-quick ease-standard",
+          primary
+            ? "bg-primary text-primary-foreground"
+            : "border border-line bg-surface text-muted group-hover:border-primary/45 group-hover:text-primary",
+        )}
+      >
+        <Icon className={ICON_SIZE.md} aria-hidden strokeWidth={ICON_STROKE.ui} />
+      </span>
+      <span className={cn("w-full text-[11px] font-semibold leading-tight", primary ? "text-ink" : "text-muted group-hover:text-ink")}>
+        {label}
+      </span>
+    </Link>
   );
 }
 
 /**
- * The Money Hub in one section: two groups of interactive rows inside a single
- * surface (no card per wallet, no card per goal, no nested cards).
+ * The Money Hub in one section: two labelled groups of interactive rows inside a
+ * single structural surface (no card per wallet, no card per goal, no nested
+ * cards), each row scanning icon → identity/metadata → balance/status → chevron.
  *
- * Balances and progress are read straight from the derived state, and every
- * figure obeys the hide-balances preference.
+ * Balances and progress come straight from the derived state, and every figure
+ * obeys the hide-balances preference.
  */
 function MoneyHubSection({
   wallets,
@@ -237,7 +288,7 @@ function MoneyHubSection({
         id="money-hub-title"
         action={
           <Link href="/wallets" className={SECTION_LINK}>
-            Kelola
+            Kelola semua
           </Link>
         }
       >
@@ -245,23 +296,25 @@ function MoneyHubSection({
       </SectionTitle>
 
       <Card padded={false} className="overflow-hidden">
-        <GroupHeader
-          label="Dompet"
-          actionHref={wallets.length > 0 ? "/wallets/new" : undefined}
-          actionLabel="Tambah"
-        />
+        <GroupLabel label="Dompet" actionHref={wallets.length > 0 ? "/wallets/new" : undefined} actionLabel="Tambah" />
         {wallets.length === 0 ? (
           <HubEmptyRow text="Belum ada dompet aktif." actionHref="/wallets/new" actionLabel="Buat dompet" />
         ) : (
           <ul className="divide-y divide-line/70">
             {wallets.map((row) => (
               <li key={row.wallet.id}>
-                <Link href={`/wallets/${row.wallet.id}`} className={ROW_LINK}>
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-[13.5px] font-semibold text-ink">{row.wallet.name}</span>
+                <Link href={`/wallets/${row.wallet.id}`} className={ROW}>
+                  <span className={cn(ICON_CHIP, "h-9 w-9 bg-brand-soft text-brand-strong")}>
+                    <Wallet className="h-[18px] w-[18px]" aria-hidden strokeWidth={ICON_STROKE.ui} />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="flex min-w-0 items-baseline justify-between gap-2">
+                      <span className="truncate text-[13.5px] font-semibold text-ink">{row.wallet.name}</span>
+                      <span className="shrink-0 text-[13.5px] font-bold tabular text-ink">{money(row.balance)}</span>
+                    </span>
                     <span className="metadata truncate">{WALLET_TYPE_LABELS[row.wallet.type]}</span>
                   </span>
-                  <span className="shrink-0 text-[13.5px] font-bold tabular text-ink">{money(row.balance)}</span>
+                  <ChevronRight className={cn(ICON_SIZE.sm, "shrink-0 text-subtle")} aria-hidden />
                 </Link>
               </li>
             ))}
@@ -275,11 +328,11 @@ function MoneyHubSection({
           </ul>
         )}
 
-        <GroupHeader
+        <GroupLabel
           label="Tabungan"
           actionHref={savings.length > 0 ? "/savings/new" : undefined}
           actionLabel="Target"
-          className="border-t"
+          className="border-t border-line"
         />
         {savings.length === 0 ? (
           <HubEmptyRow text="Belum ada target tabungan." actionHref="/savings/new" actionLabel="Buat target" />
@@ -287,26 +340,32 @@ function MoneyHubSection({
           <ul className="divide-y divide-line/70">
             {savings.map((progress) => (
               <li key={progress.target.id}>
-                <Link href={`/savings/${progress.target.id}`} className={ROW_STACK}>
-                  <span className="flex min-w-0 items-baseline justify-between gap-2">
-                    <span className="truncate text-[13.5px] font-semibold text-ink">{progress.target.name}</span>
-                    <span className="shrink-0 text-[13px] font-bold tabular text-ink">{money(progress.saved)}</span>
+                <Link href={`/savings/${progress.target.id}`} className={ROW}>
+                  <span className={cn(ICON_CHIP, "h-9 w-9 bg-savings-soft text-savings")}>
+                    <PiggyBank className="h-[18px] w-[18px]" aria-hidden strokeWidth={ICON_STROKE.ui} />
                   </span>
-                  <span className="flex items-center gap-2">
-                    <ProgressBar
-                      percent={progress.percentCapped}
-                      tone={progress.goalReached ? "income" : "savings"}
-                      className="h-1.5"
-                      label={`Progres ${progress.target.name}`}
-                    />
-                    <span className="w-9 shrink-0 text-right text-[11px] tabular text-muted">
-                      {progress.percentCapped.toFixed(0)}%
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="flex min-w-0 items-baseline justify-between gap-2">
+                      <span className="truncate text-[13.5px] font-semibold text-ink">{progress.target.name}</span>
+                      <span className="shrink-0 text-[13.5px] font-bold tabular text-ink">{money(progress.saved)}</span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <ProgressBar
+                        percent={progress.percentCapped}
+                        tone={progress.goalReached ? "income" : "savings"}
+                        className="h-1.5"
+                        label={`Progres ${progress.target.name}`}
+                      />
+                      <span className="w-8 shrink-0 text-right text-[11px] tabular text-muted">
+                        {progress.percentCapped.toFixed(0)}%
+                      </span>
+                    </span>
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className="metadata">Target {money(progress.targetAmount)}</span>
+                      {progress.goalReached ? <Badge tone="income">tercapai</Badge> : null}
                     </span>
                   </span>
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    <span className="metadata">Target {money(progress.targetAmount)}</span>
-                    {progress.goalReached ? <Badge tone="income">tercapai</Badge> : null}
-                  </span>
+                  <ChevronRight className={cn(ICON_SIZE.sm, "shrink-0 text-subtle")} aria-hidden />
                 </Link>
               </li>
             ))}
@@ -324,7 +383,8 @@ function MoneyHubSection({
   );
 }
 
-function GroupHeader({
+/** Group label inside the money-hub surface — typography, not another band. */
+function GroupLabel({
   label,
   actionHref,
   actionLabel,
@@ -336,13 +396,8 @@ function GroupHeader({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-2 border-b border-line bg-elevated/50 px-3 py-1.5",
-        className,
-      )}
-    >
-      <span className="metadata font-bold uppercase tracking-wide">{label}</span>
+    <div className={cn("flex items-center justify-between gap-2 px-3.5 pb-1 pt-3", className)}>
+      <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-subtle">{label}</span>
       {actionHref ? (
         <Link href={actionHref} className={SECTION_LINK}>
           + {actionLabel}
@@ -354,7 +409,7 @@ function GroupHeader({
 
 function HubEmptyRow({ text, actionHref, actionLabel }: { text: string; actionHref: string; actionLabel: string }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 pb-3">
       <span className="small-copy text-muted">{text}</span>
       <Link href={actionHref} className={SECTION_LINK}>
         + {actionLabel}
@@ -363,7 +418,15 @@ function HubEmptyRow({ text, actionHref, actionLabel }: { text: string; actionHr
   );
 }
 
-/** Recent ledger: the approved transaction row, in canonical order, nothing more. */
+/**
+ * Recent ledger: the newest records in canonical order, presented the way the
+ * Dashboard reads — icon, identity, metadata, amount.
+ *
+ * The feed is a Dashboard-owned presentation composed from the existing
+ * transaction helpers (`TransactionIcon`, `describeTransaction`,
+ * `formatTransactionDate`), so the Transactions screen keeps its own row design
+ * and no financial logic is duplicated here.
+ */
 function RecentTransactions({ items }: { items: ReturnType<typeof useDerived>["transactionsDesc"] }) {
   return (
     <section aria-labelledby="recent-transactions-title" className="flex flex-col gap-2">
@@ -371,7 +434,7 @@ function RecentTransactions({ items }: { items: ReturnType<typeof useDerived>["t
         id="recent-transactions-title"
         action={
           <Link href="/transactions" className={SECTION_LINK}>
-            Semua
+            Lihat semua
           </Link>
         }
       >
@@ -387,10 +450,10 @@ function RecentTransactions({ items }: { items: ReturnType<typeof useDerived>["t
           </LinkButton>
         </Card>
       ) : (
-        <Card as="section" padded={false} className="overflow-hidden px-1.5 py-1">
-          <ul className="flex flex-col">
+        <Card padded={false} className="overflow-hidden">
+          <ul className="divide-y divide-line/70">
             {items.map((transaction) => (
-              <TransactionRow key={transaction.id} transaction={transaction} href={`/transactions/${transaction.id}`} />
+              <DashboardTransactionRow key={transaction.id} transaction={transaction} href={`/transactions/${transaction.id}`} />
             ))}
           </ul>
         </Card>
@@ -400,35 +463,123 @@ function RecentTransactions({ items }: { items: ReturnType<typeof useDerived>["t
 }
 
 /**
- * Closing bridge to /reports. It states one derived fact (the largest expense
- * category of the current month) instead of inventing a trend or a percentage,
- * and falls back to neutral copy when there is nothing to summarise yet.
+ * Icon treatment for the feed: semantic by transaction *type*, never the
+ * categorical chart palette — the tint says what kind of movement the row is and
+ * nothing more. Transfers, savings movements and opening balances therefore get
+ * their own neutral/blue/violet chip and never an income or expense one.
+ */
+const FEED_TONES: Record<Transaction["type"], { chip: string; icon: string; badge: "income" | "expense" | "savings" | "brand" | "neutral" }> = {
+  income: { chip: "bg-income-soft", icon: "text-income", badge: "income" },
+  expense: { chip: "bg-expense-soft", icon: "text-expense", badge: "expense" },
+  transfer: { chip: "bg-transfer-soft", icon: "text-transfer", badge: "brand" },
+  savings_deposit: { chip: "bg-savings-soft", icon: "text-savings", badge: "savings" },
+  savings_withdrawal: { chip: "bg-savings-soft", icon: "text-savings", badge: "savings" },
+  opening_balance: { chip: "bg-elevated", icon: "text-muted", badge: "neutral" },
+};
+
+function DashboardTransactionRow({ transaction, href }: { transaction: Transaction; href: string }) {
+  const context = useDescribeContext();
+  const categories = useSmartSpendStore((state) => state.data.categories);
+  const hideBalances = useHideBalances();
+  const meta = getCategoryMeta(transaction.categoryId, categories);
+  const tone = FEED_TONES[transaction.type];
+  const title =
+    transaction.note && transaction.note.trim().length > 0
+      ? transaction.note
+      : meta?.label ?? TRANSACTION_TYPE_LABELS[transaction.type];
+  // Only a real income/expense is signed and toned. An internal movement or an
+  // opening balance stays neutral ink (with its own type badge), so the feed
+  // never presents it as income or expense.
+  const amountKind: "income" | "expense" | "neutral" =
+    transaction.type === "income" ? "income" : transaction.type === "expense" ? "expense" : "neutral";
+  const amount = hideBalances ? maskMoney() : formatSignedIDR(transaction.amount, amountKind);
+
+  return (
+    <li>
+      <Link href={href} className={ROW}>
+        <span className={cn(ICON_CHIP, "h-9 w-9", tone.chip)}>
+          <TransactionIcon transaction={transaction} className={cn("h-[18px] w-[18px]", tone.icon)} />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex min-w-0 items-baseline justify-between gap-2">
+            <span className="truncate text-[13.5px] font-semibold text-ink">{title}</span>
+            <span
+              className={cn(
+                "shrink-0 text-[13.5px] font-bold tabular",
+                amountKind === "income" && "text-income",
+                amountKind === "expense" && "text-expense",
+                amountKind === "neutral" && "text-ink",
+              )}
+            >
+              {amount}
+            </span>
+          </span>
+          <span className="flex min-w-0 items-center gap-1.5 text-[11.5px] text-muted">
+            <Badge tone={tone.badge} className="shrink-0">
+              {TRANSACTION_TYPE_LABELS[transaction.type]}
+            </Badge>
+            <span className="truncate">{describeTransaction(transaction, context)}</span>
+            <span className="shrink-0" aria-hidden>
+              ·
+            </span>
+            <span className="shrink-0 tabular">{formatTransactionDate(transaction.date)}</span>
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+/**
+ * Closing bridge to /reports.
+ *
+ * Deterministic by construction: it states one derived fact (the largest expense
+ * category of the current month) and nothing else — no trend, no percentage, no
+ * invented advice. The whole row is the link, so the chevron is an affordance
+ * rather than a second target, and the amount respects the hide-balances
+ * preference.
  */
 function ReportsBridge({ topExpense }: { topExpense?: CategoryBreakdownEntry }) {
   const categories = useSmartSpendStore((state) => state.data.categories);
   const hideBalances = useHideBalances();
 
   return (
-    <section aria-labelledby="reports-bridge-title" className="flex flex-col gap-1 px-0.5">
-      <h2 id="reports-bridge-title" className="section-title text-muted">
+    <section aria-labelledby="reports-bridge-title">
+      {/* Keeps the region's accessible name stable ("Pola pengeluaran") while the
+          visible title states the user benefit, as the reference does. */}
+      <h2 id="reports-bridge-title" className="sr-only">
         Pola pengeluaran
       </h2>
-      <p className="small-copy text-muted">
-        {topExpense ? (
-          <>
-            Pengeluaran terbesar bulan ini:{" "}
-            <strong className="font-semibold text-ink">
-              {categoryLabel(topExpense.categoryId, "Tanpa kategori", categories)}
-            </strong>{" "}
-            {hideBalances ? maskMoney() : formatIDR(topExpense.amount)}.{" "}
-          </>
-        ) : (
-          "Belum ada pengeluaran bulan ini. "
-        )}
-        <Link href="/reports" className="font-semibold text-brand hover:underline">
-          Buka laporan
-        </Link>
-      </p>
+      <Link
+        href="/reports"
+        className="motion-press flex flex-col gap-2.5 rounded-surface border border-line bg-brand-soft/45 p-3.5 transition-[background-color,border-color] duration-quick ease-standard hover:border-primary/40 hover:bg-brand-soft/70 active:bg-brand-soft"
+      >
+        <span className="flex items-start gap-3">
+          <span className={cn(ICON_CHIP, "h-9 w-9 bg-brand-soft text-brand-strong")}>
+            <ChartPie className="h-[18px] w-[18px]" aria-hidden strokeWidth={ICON_STROKE.ui} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="card-title block text-ink">Lihat pola keuanganmu</span>
+            <span className="small-copy mt-0.5 block text-muted">
+              {topExpense ? (
+                <>
+                  Pengeluaran terbesar bulan ini:{" "}
+                  <strong className="font-semibold text-ink">
+                    {categoryLabel(topExpense.categoryId, "Tanpa kategori", categories)}
+                  </strong>{" "}
+                  {hideBalances ? maskMoney() : formatIDR(topExpense.amount)}.
+                </>
+              ) : (
+                "Belum ada pengeluaran bulan ini."
+              )}
+            </span>
+          </span>
+        </span>
+        <span className="flex items-center justify-between gap-2 border-t border-line/70 pt-2 text-[12px] font-semibold text-brand">
+          <span>Buka laporan</span>
+          <ChevronRight className={ICON_SIZE.sm} aria-hidden />
+        </span>
+      </Link>
     </section>
   );
 }
@@ -442,7 +593,7 @@ function EmptyDashboard() {
   return (
     <Card as="section" className="flex flex-col gap-4 bg-brand-soft/55">
       <div className="flex items-start gap-3">
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand text-primary-foreground">
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-primary-foreground">
           <Wallet className={ICON_SIZE.md} aria-hidden strokeWidth={ICON_STROKE.ui} />
         </span>
         <div className="min-w-0">
